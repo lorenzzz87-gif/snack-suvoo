@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snack Suvoo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 1rem 0.5rem;
+    font-family: 'Courier New', monospace;
+    color: #00ff88;
+    user-select: none;
+  }
+  h1 {
+    font-size: 2rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    color: #00ff88;
+    text-shadow: 0 0 20px #00ff8866;
+  }
+  #scoreboard {
+    display: flex;
+    gap: 3rem;
+    margin-bottom: 1.2rem;
+    font-size: 0.9rem;
+    letter-spacing: 0.15em;
+    color: #aaa;
+  }
+  #scoreboard span { color: #00ff88; font-weight: bold; }
+  #game-area {
+    position: relative;
+    border: 2px solid #00ff8844;
+    background: #0d0d15;
+    box-shadow: 0 0 40px #00ff8811;
+  }
+  canvas { display: block; width: min(800px, 90vmin); height: min(800px, 90vmin); }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #0d0d15ee;
+    transition: opacity 0.3s;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h2 {
+    font-size: 1.6rem;
+    letter-spacing: 0.25em;
+    margin-bottom: 0.5rem;
+    color: #00ff88;
+  }
+  #overlay p {
+    font-size: 0.85rem;
+    color: #aaa;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    padding: 0 1rem;
+  }
+  #overlay .final-score {
+    font-size: 2.5rem;
+    color: #00ff88;
+    margin-bottom: 0.3rem;
+  }
+  button {
+    background: transparent;
+    border: 1.5px solid #00ff88;
+    color: #00ff88;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    padding: 0.6rem 2rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.15s, color 0.15s;
+    margin: 0.3rem;
+  }
+  button:hover { background: #00ff8822; }
+  #controls {
+    margin-top: 1rem;
+    font-size: 0.72rem;
+    color: #555;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  #level-badge {
+    position: absolute;
+    top: 8px; right: 12px;
+    font-size: 0.75rem;
+    color: #444;
+    letter-spacing: 0.1em;
+  }
+  #mobile-controls {
+    display: none;
+    margin-top: 1rem;
+    gap: 0;
+  }
+  .d-row { display: flex; justify-content: center; }
+  .d-btn {
+    width: 56px; height: 56px;
+    background: #0d0d15;
+    border: 1px solid #00ff8833;
+    color: #00ff8899;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+  }
+  .d-btn:active { background: #00ff8822; }
+  @media (pointer: coarse) {
+    #mobile-controls { display: flex; flex-direction: column; }
+    #controls { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Snack Suvoo</h1>
+
+<div id="scoreboard">
+  <div>PUNTEGGIO <span id="score">0</span></div>
+  <div>RECORD <span id="highscore">0</span></div>
+  <div>LIVELLO <span id="level">1</span></div>
+</div>
+
+<div id="game-area">
+  <canvas id="canvas" width="800" height="800"></canvas>
+  <div id="level-badge" id="level-badge">LV 1</div>
+  <div id="overlay">
+    <h2 id="overlay-title">SNACK SUVOO</h2>
+    <p id="overlay-msg">Usa le frecce o WASD per muoverti.<br>Raccogli il cibo, evita i muri e te stesso!</p>
+    <div class="final-score" id="final-score" style="display:none"></div>
+    <button id="start-btn">▶ INIZIA</button>
+  </div>
+</div>
+
+<div id="controls">
+  ↑ ↓ ← → &nbsp;|&nbsp; WASD &nbsp;|&nbsp; P = pausa
+</div>
+
+<div id="mobile-controls">
+  <div class="d-row"><button class="d-btn" data-dir="UP">▲</button></div>
+  <div class="d-row">
+    <button class="d-btn" data-dir="LEFT">◀</button>
+    <button class="d-btn" data-dir="DOWN">▼</button>
+    <button class="d-btn" data-dir="RIGHT">▶</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const COLS = 30, ROWS = 30;
+const CELL = canvas.width / COLS;
+
+const scoreEl = document.getElementById('score');
+const highscoreEl = document.getElementById('highscore');
+const levelEl = document.getElementById('level');
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const overlayMsg = document.getElementById('overlay-msg');
+const finalScore = document.getElementById('final-score');
+const startBtn = document.getElementById('start-btn');
+
+let snake, dir, nextDir, food, score, level, highscore, gameLoop, paused, gameOver;
+highscore = parseInt(localStorage.getItem('snakeHighscore') || '0');
+highscoreEl.textContent = highscore;
+
+const logoImg = new Image();
+logoImg.src = 'logo.jpg';
+let logoLoaded = false;
+logoImg.onload = () => { logoLoaded = true; };
+
+const SPEEDS = [150, 130, 110, 90, 75, 60, 50];
+
+function getSpeed() {
+  return SPEEDS[Math.min(level - 1, SPEEDS.length - 1)];
+}
+
+function getLevel(s) {
+  return Math.floor(s / 5) + 1;
+}
+
+function randomFood(snake) {
+  let pos;
+  do {
+    pos = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+  } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  return pos;
+}
+
+function initGame() {
+  snake = [{ x: 15, y: 15 }, { x: 14, y: 15 }, { x: 13, y: 15 }];
+  dir = { x: 1, y: 0 };
+  nextDir = { x: 1, y: 0 };
+  score = 0;
+  level = 1;
+  paused = false;
+  gameOver = false;
+  food = randomFood(snake);
+  scoreEl.textContent = 0;
+  levelEl.textContent = 1;
+  overlay.classList.add('hidden');
+  if (gameLoop) clearInterval(gameLoop);
+  gameLoop = setInterval(tick, getSpeed());
+  draw();
+}
+
+function tick() {
+  if (paused || gameOver) return;
+  dir = nextDir;
+  const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+  if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS ||
+      snake.some(s => s.x === head.x && s.y === head.y)) {
+    endGame(); return;
+  }
+
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    scoreEl.textContent = score;
+    if (score > highscore) {
+      highscore = score;
+      highscoreEl.textContent = highscore;
+      localStorage.setItem('snakeHighscore', highscore);
+    }
+    const newLevel = getLevel(score);
+    if (newLevel !== level) {
+      level = newLevel;
+      levelEl.textContent = level;
+      clearInterval(gameLoop);
+      gameLoop = setInterval(tick, getSpeed());
+    }
+    food = randomFood(snake);
+  } else {
+    snake.pop();
+  }
+  draw();
+}
+
+function endGame() {
+  gameOver = true;
+  clearInterval(gameLoop);
+  overlayTitle.textContent = 'GAME OVER';
+  overlayMsg.textContent = 'Hai sbattuto contro qualcosa!';
+  finalScore.style.display = 'block';
+  finalScore.textContent = score;
+  startBtn.textContent = '↺ RIPROVA';
+  overlay.classList.remove('hidden');
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = '#ffffff06';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= COLS; x++) {
+    ctx.beginPath(); ctx.moveTo(x * CELL, 0); ctx.lineTo(x * CELL, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y <= ROWS; y++) {
+    ctx.beginPath(); ctx.moveTo(0, y * CELL); ctx.lineTo(canvas.width, y * CELL); ctx.stroke();
+  }
+
+  snake.forEach((seg, i) => {
+    const alpha = i === 0 ? 1 : Math.max(0.3, 1 - i * 0.03);
+    ctx.fillStyle = i === 0 ? '#00ff88' : `rgba(0,220,100,${alpha})`;
+    const pad = i === 0 ? 1 : 2;
+    ctx.fillRect(seg.x * CELL + pad, seg.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
+
+    if (i === 0) {
+      ctx.fillStyle = '#0a0a0f';
+      const ew = 3, eh = 3;
+      const eyeOffset = 4;
+      if (dir.x === 1) {
+        ctx.fillRect(seg.x * CELL + CELL - eyeOffset - ew, seg.y * CELL + 4, ew, eh);
+        ctx.fillRect(seg.x * CELL + CELL - eyeOffset - ew, seg.y * CELL + CELL - 4 - eh, ew, eh);
+      } else if (dir.x === -1) {
+        ctx.fillRect(seg.x * CELL + eyeOffset, seg.y * CELL + 4, ew, eh);
+        ctx.fillRect(seg.x * CELL + eyeOffset, seg.y * CELL + CELL - 4 - eh, ew, eh);
+      } else if (dir.y === -1) {
+        ctx.fillRect(seg.x * CELL + 4, seg.y * CELL + eyeOffset, ew, eh);
+        ctx.fillRect(seg.x * CELL + CELL - 4 - ew, seg.y * CELL + eyeOffset, ew, eh);
+      } else {
+        ctx.fillRect(seg.x * CELL + 4, seg.y * CELL + CELL - eyeOffset - eh, ew, eh);
+        ctx.fillRect(seg.x * CELL + CELL - 4 - ew, seg.y * CELL + CELL - eyeOffset - eh, ew, eh);
+      }
+    }
+  });
+
+  const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 250);
+  const logoSize = CELL * 1.8;
+  const logoX = food.x * CELL + (CELL - logoSize) / 2;
+  const logoY = food.y * CELL + (CELL - logoSize) / 2;
+  if (logoLoaded) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, logoSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+    ctx.strokeStyle = `rgba(220, 50, 50, ${pulse * 0.9})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, logoSize / 2, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = `rgba(255, 60, 60, ${pulse})`;
+    ctx.fillRect(food.x * CELL + 2, food.y * CELL + 2, CELL - 4, CELL - 4);
+  }
+}
+
+let animFrame;
+function animLoop() {
+  if (snake && !gameOver && !paused) draw();
+  requestAnimationFrame(animLoop);
+}
+animLoop();
+
+document.addEventListener('keydown', e => {
+  const map = {
+    ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+    ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+    w: { x: 0, y: -1 }, s: { x: 0, y: 1 },
+    a: { x: -1, y: 0 }, d: { x: 1, y: 0 },
+    W: { x: 0, y: -1 }, S: { x: 0, y: 1 },
+    A: { x: -1, y: 0 }, D: { x: 1, y: 0 },
+  };
+  if (map[e.key]) {
+    const nd = map[e.key];
+    if (nd.x !== -dir.x || nd.y !== -dir.y) nextDir = nd;
+    e.preventDefault();
+  }
+  if (e.key === 'p' || e.key === 'P') togglePause();
+});
+
+document.querySelectorAll('.d-btn').forEach(btn => {
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const map = { UP: { x: 0, y: -1 }, DOWN: { x: 0, y: 1 }, LEFT: { x: -1, y: 0 }, RIGHT: { x: 1, y: 0 } };
+    const nd = map[btn.dataset.dir];
+    if (nd && (nd.x !== -dir.x || nd.y !== -dir.y)) nextDir = nd;
+  }, { passive: false });
+});
+
+function togglePause() {
+  if (gameOver) return;
+  paused = !paused;
+  if (paused) {
+    overlayTitle.textContent = 'PAUSA';
+    overlayMsg.textContent = 'Premi P per riprendere.';
+    finalScore.style.display = 'none';
+    startBtn.textContent = '▶ RIPRENDI';
+    overlay.classList.remove('hidden');
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+
+startBtn.addEventListener('click', () => {
+  if (paused) { togglePause(); return; }
+  finalScore.style.display = 'none';
+  overlayMsg.textContent = 'Usa le frecce o WASD per muoverti.<br>Raccogli il cibo, evita i muri e te stesso!';
+  startBtn.textContent = '▶ INIZIA';
+  initGame();
+});
+</script>
+</body>
+</html>

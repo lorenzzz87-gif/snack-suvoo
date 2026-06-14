@@ -1,0 +1,7 @@
+.DS_Store
+*.pptx
+unpacked/
+.claude/
+IMG_4298.jpg
+IMG_4299.jpg
+add_logo.py
