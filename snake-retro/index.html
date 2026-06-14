@@ -368,6 +368,11 @@ function togglePause() {
   }
 }
 
+document.addEventListener('visibilitychange', () => {
+  if (!snake || gameOver) return;
+  if (document.hidden && !paused) togglePause();
+});
+
 startBtn.addEventListener('click', () => {
   if (paused) { togglePause(); return; }
   finalScore.style.display = 'none';
