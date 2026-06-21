@@ -63,7 +63,7 @@ const TYPE_EMOJI = {
   // 倒货 / 批发
   'wholesale': '📦',
   'ws-clothing': '👕', 'ws-shoes-bags': '👜', 'ws-electronics': '📱',
-  'ws-auto-parts': '🔧', 'ws-bike-parts': '🚲', 'ws-household': '🧺',
+  'ws-auto-parts': '🛞', 'ws-bike-parts': '🚲', 'ws-household': '🧺',
   'ws-beauty': '💄', 'ws-food': '🍫', 'ws-other': '📦',
 }
 
