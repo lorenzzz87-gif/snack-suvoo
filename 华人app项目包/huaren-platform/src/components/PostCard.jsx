@@ -37,9 +37,9 @@ function CarpoolThumb() {
 }
 
 // 左侧缩略图：车辆买卖（品牌红实心车）
-function CarThumb() {
+export function CarThumb({ size = 40 }) {
   return (
-    <svg width="40" height="40" viewBox="0 0 46 46" fill="none">
+    <svg width={size} height={size} viewBox="0 0 46 46" fill="none">
       <rect x="5" y="20" width="36" height="14" rx="5" fill="#C53A2E" opacity=".85"/>
       <path d="M9 20L14 12H32L37 20" fill="#A02828" stroke="#A02828" strokeWidth="1" strokeLinejoin="round"/>
       <circle cx="13" cy="35" r="5" fill="#FBEDEA" stroke="#A02828" strokeWidth="2"/>
@@ -52,7 +52,7 @@ function CarThumb() {
   )
 }
 
-const TYPE_EMOJI = {
+export const TYPE_EMOJI = {
   'job-restaurant': '🧑‍🍳', 'job-retail': '🛍️', 'job-factory': '🏭',
   'job-driver': '🚚', 'job-domestic': '🏠', 'job-office': '📋',
   'job-other': '💼', 'item-appliance': '📺', 'item-furniture': '🛋️',
