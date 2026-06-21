@@ -1113,19 +1113,22 @@ function EANTool() {
       }
     })
 
-    // Digits below barcode
-    const numY = barY + barH + 26
-    const centerX = barX + (3 + 42) * modW
+    // Digits below barcode — each digit centered under its 7-module block
+    const numY = barY + barH + 30
     ctx.fillStyle = t.text
-    ctx.font = '20px monospace'
+    ctx.font = 'bold 22px monospace'
     ctx.textBaseline = 'alphabetic'
-    // First digit: bottom-left, same row as other numbers
     ctx.textAlign = 'center'
-    ctx.fillText(ean[0], 28, numY)
-    // Left 6 digits (centered under left half)
-    ctx.fillText(ean.slice(1, 7), barX + 3 * modW + 21 * modW, numY)
-    // Right 6 digits (centered under right half)
-    ctx.fillText(ean.slice(7, 13), centerX + 5 * modW + 21 * modW, numY)
+    // First digit: left of left guard
+    ctx.fillText(ean[0], barX - modW * 2, numY)
+    // Left 6 digits (each centered under its 7-module block)
+    for (let i = 0; i < 6; i++) {
+      ctx.fillText(ean[i + 1], barX + (3 + i * 7 + 3.5) * modW, numY)
+    }
+    // Right 6 digits
+    for (let i = 0; i < 6; i++) {
+      ctx.fillText(ean[i + 7], barX + (3 + 42 + 5 + i * 7 + 3.5) * modW, numY)
+    }
 
     setPreview(canvas.toDataURL('image/png'))
   }
