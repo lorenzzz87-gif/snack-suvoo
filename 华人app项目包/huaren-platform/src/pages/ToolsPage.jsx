@@ -22,13 +22,18 @@ function CurrencyTool() {
       .catch(() => setLastUpdate('离线估算'))
 
     // BTC & SPCX via edge function
-    supabase.functions.invoke('stock-price').then(({ data }) => {
-      if (data) setInvest({
-        btcEUR: data.btc?.priceEUR ?? null,
-        spcxEUR: data.spcx?.priceEUR ?? null,
-        spcxUSD: data.spcx?.priceUSD ?? null,
-      })
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stock-price`, {
+      headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
     })
+      .then(r => r.json())
+      .then(data => {
+        if (data.btc || data.spcx) setInvest({
+          btcEUR: data.btc?.priceEUR ?? null,
+          spcxEUR: data.spcx?.priceEUR ?? null,
+          spcxUSD: data.spcx?.priceUSD ?? null,
+        })
+      })
+      .catch(() => {})
   }, [])
 
   function toEUR(val, fromCur) {
