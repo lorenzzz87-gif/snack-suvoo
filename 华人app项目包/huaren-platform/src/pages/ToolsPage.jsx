@@ -1076,15 +1076,60 @@ function eanModules(ean) {
 
 function EANTool() {
   const canvasRef = useRef()
+  const videoRef = useRef()
+  const streamRef = useRef()
+  const rafRef = useRef()
   const [input, setInput] = useState('')
   const [tpl, setTpl] = useState(0)
   const [preview, setPreview] = useState(null)
   const [err, setErr] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const [scanMsg, setScanMsg] = useState('对准条码...')
 
   const TEMPLATES = [
     { name: '黑条码白底', bg: '#ffffff', bar: '#000000', text: '#000000', border: '#e0e0e0' },
     { name: '白条码黑底', bg: '#111111', bar: '#ffffff', text: '#ffffff', border: '#444' },
   ]
+
+  function stopScan() {
+    cancelAnimationFrame(rafRef.current)
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    setScanning(false)
+  }
+
+  async function startScan() {
+    if (!('BarcodeDetector' in window)) {
+      setScanMsg('')
+      alert('您的浏览器暂不支持扫码（推荐使用 Android Chrome），请手动输入数字')
+      return
+    }
+    setScanning(true)
+    setScanMsg('对准条码...')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 } }
+      })
+      streamRef.current = stream
+      videoRef.current.srcObject = stream
+      await videoRef.current.play()
+      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
+      const tick = async () => {
+        try {
+          const codes = await detector.detect(videoRef.current)
+          if (codes.length > 0) {
+            setInput(codes[0].rawValue.replace(/\D/g, ''))
+            stopScan()
+            return
+          }
+        } catch {}
+        rafRef.current = requestAnimationFrame(tick)
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    } catch {
+      setScanning(false)
+      setScanMsg('无法访问摄像头')
+    }
+  }
 
   function generate() {
     setErr('')
@@ -1113,19 +1158,15 @@ function EANTool() {
       }
     })
 
-    // Digits below barcode — each digit centered under its 7-module block
     const numY = barY + barH + 30
     ctx.fillStyle = t.text
     ctx.font = 'bold 22px monospace'
     ctx.textBaseline = 'alphabetic'
     ctx.textAlign = 'center'
-    // First digit: left of left guard
     ctx.fillText(ean[0], barX - modW * 2, numY)
-    // Left 6 digits (each centered under its 7-module block)
     for (let i = 0; i < 6; i++) {
       ctx.fillText(ean[i + 1], barX + (3 + i * 7 + 3.5) * modW, numY)
     }
-    // Right 6 digits
     for (let i = 0; i < 6; i++) {
       ctx.fillText(ean[i + 7], barX + (3 + 42 + 5 + i * 7 + 3.5) * modW, numY)
     }
@@ -1143,14 +1184,43 @@ function EANTool() {
   return (
     <div>
       <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {/* 扫码摄像头全屏浮层 */}
+      {scanning && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <video ref={videoRef} style={{ width: '100%', maxWidth: 480, borderRadius: 12 }}
+            playsInline muted />
+          {/* 瞄准框 */}
+          <div style={{ position: 'absolute', width: 260, height: 100, border: '2px solid #C53A2E',
+            borderRadius: 8, boxShadow: '0 0 0 2000px rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
+          <p style={{ color: '#fff', marginTop: 24, fontSize: 15 }}>{scanMsg}</p>
+          <button onClick={stopScan}
+            style={{ marginTop: 16, padding: '12px 36px', background: '#C53A2E', color: '#fff',
+              border: 'none', borderRadius: 24, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+            取消
+          </button>
+        </div>
+      )}
+
       <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px' }}>
         输入 12 位数字自动补全校验位，或直接输入完整 13 位 EAN-13
       </p>
       <div className="field" style={{ marginBottom: 14 }}>
         <label>条码数字（12 或 13 位）</label>
-        <input type="text" inputMode="numeric" maxLength={13}
-          placeholder="如：880123456789"
-          value={input} onChange={e => { setInput(e.target.value.replace(/\D/g, '')); setErr('') }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input type="text" inputMode="numeric" maxLength={13}
+            placeholder="如：880123456789"
+            value={input} onChange={e => { setInput(e.target.value.replace(/\D/g, '')); setErr('') }}
+            style={{ flex: 1 }} />
+          <button onClick={startScan}
+            title="扫描条码"
+            style={{ flexShrink: 0, width: 48, height: 48, borderRadius: 10,
+              border: '1.5px solid var(--line)', background: '#fff', cursor: 'pointer',
+              fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            📷
+          </button>
+        </div>
       </div>
       {err && <p style={{ color: '#C53A2E', fontSize: 13, margin: '-8px 0 12px' }}>{err}</p>}
       <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
