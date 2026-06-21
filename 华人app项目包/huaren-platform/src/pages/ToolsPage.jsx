@@ -6,6 +6,7 @@ import { useAuth } from '../App'
 // ── 汇率换算 ──────────────────────────────────────────────
 function CurrencyTool() {
   const [rates, setRates] = useState({ CNY: 7.82, USD: 1.08 })
+  const [invest, setInvest] = useState({ btcEUR: null, spcxEUR: null, spcxUSD: null })
   const [amount, setAmount] = useState('')
   const [from, setFrom] = useState('EUR')
   const [lastUpdate, setLastUpdate] = useState('')
@@ -18,7 +19,25 @@ function CurrencyTool() {
         setLastUpdate(new Date().toLocaleDateString('zh'))
       })
       .catch(() => setLastUpdate('离线估算'))
+
+    // BTC & SPCX via edge function
+    import('../lib/supabase').then(({ supabase }) => {
+      supabase.functions.invoke('stock-price').then(({ data }) => {
+        if (data) setInvest({
+          btcEUR: data.btc?.priceEUR ?? null,
+          spcxEUR: data.spcx?.priceEUR ?? null,
+          spcxUSD: data.spcx?.priceUSD ?? null,
+        })
+      })
+    })
   }, [])
+
+  function toEUR(val, fromCur) {
+    const n = parseFloat(val) || 0
+    if (fromCur === 'EUR') return n
+    if (fromCur === 'CNY') return n / rates.CNY
+    return n / rates.USD
+  }
 
   function convert(val, fromCur) {
     const n = parseFloat(val) || 0
@@ -28,11 +47,16 @@ function CurrencyTool() {
   }
 
   const result = convert(amount, from)
+  const eurAmount = toEUR(amount, from)
+
   const CURRENCIES = [
     { code: 'EUR', flag: '🇪🇺', name: '欧元' },
     { code: 'CNY', flag: '🇨🇳', name: '人民币' },
     { code: 'USD', flag: '🇺🇸', name: '美元' },
   ]
+
+  const btcShares = invest.btcEUR && eurAmount ? (eurAmount / invest.btcEUR).toFixed(6) : null
+  const spcxShares = invest.spcxEUR && eurAmount ? (eurAmount / invest.spcxEUR).toFixed(4) : null
 
   return (
     <div>
@@ -54,17 +78,48 @@ function CurrencyTool() {
           style={{ fontSize: 20, fontWeight: 700 }} />
       </div>
       {amount && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {CURRENCIES.filter(c => c.code !== from).map(c => (
-            <div key={c.code} style={{ display: 'flex', justifyContent: 'space-between',
-              background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px' }}>
-              <span style={{ color: 'var(--muted)', fontSize: 14 }}>{c.flag} {c.name}</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
-                {result[c.code]} {c.code}
-              </span>
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {CURRENCIES.filter(c => c.code !== from).map(c => (
+              <div key={c.code} style={{ display: 'flex', justifyContent: 'space-between',
+                background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px' }}>
+                <span style={{ color: 'var(--muted)', fontSize: 14 }}>{c.flag} {c.name}</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
+                  {result[c.code]} {c.code}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* 投资换算 */}
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8, fontWeight: 600, letterSpacing: 1 }}>可买入</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* BTC */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: '#fffbf0', border: '1px solid #f5d87a', borderRadius: 10, padding: '12px 14px' }}>
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>₿ Bitcoin</span>
+                  {invest.btcEUR && <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>≈ €{invest.btcEUR.toLocaleString()}/枚</span>}
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, color: '#b7860b' }}>
+                  {btcShares ? `${btcShares} BTC` : '加载中…'}
+                </span>
+              </div>
+              {/* SPCX */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: '#f0f6ff', border: '1px solid #a8c8f8', borderRadius: 10, padding: '12px 14px' }}>
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>🚀 SpaceX (SPCX)</span>
+                  {invest.spcxUSD && <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>${invest.spcxUSD}/股</span>}
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, color: '#1a5cb8' }}>
+                  {spcxShares ? `${spcxShares} 股` : '加载中…'}
+                </span>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        </>
       )}
       {lastUpdate && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, textAlign: 'right' }}>汇率更新：{lastUpdate}</div>}
     </div>
