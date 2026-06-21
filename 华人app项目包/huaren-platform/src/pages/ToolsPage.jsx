@@ -1053,11 +1053,141 @@ function QRCodeTool() {
   )
 }
 
+// ── EAN-13 条码生成器 ──────────────────────────────────────
+const EAN_L = [[0,0,0,1,1,0,1],[0,0,1,1,0,0,1],[0,0,1,0,0,1,1],[0,1,1,1,1,0,1],[0,1,0,0,0,1,1],[0,1,1,0,0,0,1],[0,1,0,1,1,1,1],[0,1,1,1,0,1,1],[0,1,1,0,1,1,1],[0,0,0,1,0,1,1]]
+const EAN_G = [[0,1,0,0,1,1,1],[0,1,1,0,0,1,1],[0,0,1,1,0,1,1],[0,1,0,0,0,0,1],[0,0,1,1,1,0,1],[0,1,1,1,0,0,1],[0,0,0,0,1,0,1],[0,0,1,0,0,0,1],[0,0,0,1,0,0,1],[0,0,1,0,1,1,1]]
+const EAN_R = [[1,1,1,0,0,1,0],[1,1,0,0,1,1,0],[1,1,0,1,1,0,0],[1,0,0,0,0,1,0],[1,0,1,1,1,0,0],[1,0,0,1,1,1,0],[1,0,1,0,0,0,0],[1,0,0,0,1,0,0],[1,0,0,1,0,0,0],[1,1,1,0,1,0,0]]
+const EAN_PARITY = [[0,0,0,0,0,0],[0,0,1,0,1,1],[0,0,1,1,0,1],[0,0,1,1,1,0],[0,1,0,0,1,1],[0,1,1,0,0,1],[0,1,1,1,0,0],[0,1,0,1,0,1],[0,1,0,1,1,0],[0,1,1,0,1,0]]
+
+function eanCheck(d12) {
+  const d = d12.split('').map(Number)
+  return String((10 - d.reduce((s, v, i) => s + v * (i % 2 === 0 ? 1 : 3), 0) % 10) % 10)
+}
+function eanModules(ean) {
+  const d = ean.split('').map(Number)
+  const par = EAN_PARITY[d[0]]
+  const m = [1,0,1]
+  for (let i = 0; i < 6; i++) m.push(...(par[i] === 0 ? EAN_L[d[i+1]] : EAN_G[d[i+1]]))
+  m.push(0,1,0,1,0)
+  for (let i = 0; i < 6; i++) m.push(...EAN_R[d[i+7]])
+  m.push(1,0,1)
+  return m // 95 modules
+}
+
+function EANTool() {
+  const canvasRef = useRef()
+  const [input, setInput] = useState('')
+  const [tpl, setTpl] = useState(0)
+  const [preview, setPreview] = useState(null)
+  const [err, setErr] = useState('')
+
+  const TEMPLATES = [
+    { name: '黑条码白底', bg: '#ffffff', bar: '#000000', text: '#000000', border: '#e0e0e0' },
+    { name: '白条码黑底', bg: '#111111', bar: '#ffffff', text: '#ffffff', border: '#444' },
+  ]
+
+  function generate() {
+    setErr('')
+    const raw = input.trim().replace(/\D/g, '')
+    if (raw.length < 12 || raw.length > 13) { setErr('请输入 12 或 13 位数字'); return }
+    const ean = raw.length === 12 ? raw + eanCheck(raw) : raw
+    if (raw.length === 13 && raw[12] !== eanCheck(raw.slice(0, 12))) { setErr('第13位校验位错误，建议只输入前12位自动补全'); return }
+
+    const t = TEMPLATES[tpl]
+    const W = 520, H = 200
+    const canvas = canvasRef.current
+    canvas.width = W; canvas.height = H
+    const ctx = canvas.getContext('2d')
+
+    ctx.fillStyle = t.bg
+    ctx.fillRect(0, 0, W, H)
+
+    const modules = eanModules(ean)
+    const barX = 56, barY = 16, barH = 140
+    const modW = 360 / 95
+
+    modules.forEach((on, i) => {
+      if (on) {
+        ctx.fillStyle = t.bar
+        ctx.fillRect(barX + i * modW, barY, modW + 0.3, barH)
+      }
+    })
+
+    // First digit left of barcode
+    ctx.fillStyle = t.text
+    ctx.font = 'bold 20px monospace'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(ean[0], 28, barY + barH / 2)
+
+    // Digits below barcode (left half + right half)
+    ctx.font = '20px monospace'
+    ctx.textBaseline = 'alphabetic'
+    const centerX = barX + (3 + 42) * modW  // after left guard + left digits
+    ctx.textAlign = 'center'
+    ctx.fillText(ean.slice(1, 7), barX + 3 * modW + 21 * modW, barY + barH + 26)
+    ctx.fillText(ean.slice(7, 13), centerX + 5 * modW + 21 * modW, barY + barH + 26)
+
+    setPreview(canvas.toDataURL('image/png'))
+  }
+
+  function download() {
+    const a = document.createElement('a')
+    a.href = preview; a.download = `EAN13_${input.trim()}.png`; a.click()
+  }
+
+  const digits = input.replace(/\D/g, '')
+
+  return (
+    <div>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px' }}>
+        输入 12 位数字自动补全校验位，或直接输入完整 13 位 EAN-13
+      </p>
+      <div className="field" style={{ marginBottom: 14 }}>
+        <label>条码数字（12 或 13 位）</label>
+        <input type="text" inputMode="numeric" maxLength={13}
+          placeholder="如：880123456789"
+          value={input} onChange={e => { setInput(e.target.value.replace(/\D/g, '')); setErr('') }} />
+      </div>
+      {err && <p style={{ color: '#C53A2E', fontSize: 13, margin: '-8px 0 12px' }}>{err}</p>}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        {TEMPLATES.map((t, i) => (
+          <button key={i} onClick={() => setTpl(i)}
+            style={{ flex: 1, padding: '10px 0', borderRadius: 10,
+              border: `2px solid ${tpl===i ? '#C53A2E' : t.border}`,
+              background: t.bg, color: t.text,
+              fontWeight: tpl===i ? 700 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+      <button className="btn-primary" onClick={generate} disabled={digits.length < 12}
+        style={{ marginBottom: 14, opacity: digits.length < 12 ? 0.4 : 1 }}>
+        📊 生成条码
+      </button>
+      {preview && (
+        <>
+          <img src={preview} alt="条码预览"
+            style={{ width: '100%', maxWidth: 360, borderRadius: 10, border: '1px solid var(--line)',
+              display: 'block', margin: '0 auto 12px' }} />
+          <button onClick={download}
+            style={{ width: '100%', padding: '12px', background: 'var(--green)', color: '#fff',
+              border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            📥 下载 PNG
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── 主页面 ────────────────────────────────────────────────
 const TOOLS = [
   { id: 'currency', icon: '💱', title: '汇率换算', sub: 'EUR · CNY · USD 实时换算', component: CurrencyTool },
   { id: 'qrcode', icon: '📱', title: '二维码生成器', sub: '网址/微信/手机号 · 3种模版 · 可加文字', component: QRCodeTool },
   { id: 'cf', icon: '🪪', title: 'Codice Fiscale 生成', sub: '意大利税号生成器（中国出生）', component: CFTool },
+  { id: 'ean', icon: '📊', title: 'EAN 条码生成器', sub: 'EAN-13 · 黑白2种模版 · 可下载', component: EANTool },
   { id: 'iva', icon: '🧾', title: '增值税 IVA', sub: '含税/不含税价互转', component: IvaTool },
   { id: 'salary', icon: '💰', title: '工资换算', sub: '月薪 · 日薪 · 时薪', component: SalaryTool },
   { id: 'profit', icon: '📈', title: '利润率计算', sub: '进价+售价 → 利润/利润率', component: ProfitTool },
