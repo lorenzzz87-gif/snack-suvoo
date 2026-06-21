@@ -79,9 +79,9 @@ export default function RegisterMerchantPage() {
 
     let error
     if (isEdit) {
-      // 编辑：修改后重新进入待审核，避免审核通过的商家被随意改成违规内容
+      // 编辑：保留当前审核状态（已通过的不下线），只更新资料
       ;({ error } = await supabase.from('merchants')
-        .update({ ...payload, status: 'pending' })
+        .update(payload)
         .eq('id', merchantId))
     } else {
       ;({ error } = await supabase.from('merchants')
@@ -91,17 +91,19 @@ export default function RegisterMerchantPage() {
 
     if (error) { showToast('提交失败：' + (error.message || JSON.stringify(error))); return }
 
-    // 发邮件通知管理员（不阻塞流程）
-    supabase.functions.invoke('notify-merchant', {
-      body: {
-        business_name: payload.business_name,
-        business_type: payload.business_type,
-        city: payload.city,
-        contact_wechat: payload.contact_wechat || '',
-        contact_phone: payload.contact_phone || '',
-        description: payload.description || '',
-      }
-    }).catch(() => {}) // 邮件失败不影响提交成功
+    // 新增时发邮件通知管理员（编辑不打扰）
+    if (!isEdit) {
+      supabase.functions.invoke('notify-merchant', {
+        body: {
+          business_name: payload.business_name,
+          business_type: payload.business_type,
+          city: payload.city,
+          contact_wechat: payload.contact_wechat || '',
+          contact_phone: payload.contact_phone || '',
+          description: payload.description || '',
+        }
+      }).catch(() => {}) // 邮件失败不影响提交成功
+    }
 
     setSubmitted(true)
   }
@@ -112,12 +114,14 @@ export default function RegisterMerchantPage() {
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', padding: '32px 24px',
         background: 'var(--paper)', textAlign: 'center', gap: 16 }}>
-        <div style={{ fontSize: 64 }}>🎉</div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{isEdit ? '修改已提交！' : '提交成功！'}</h2>
+        <div style={{ fontSize: 64 }}>{isEdit ? '✅' : '🎉'}</div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{isEdit ? '修改已保存！' : '提交成功！'}</h2>
         <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
-          {isEdit ? '你的商家信息已更新' : '你的商家入驻申请已收到'}<br />
-          管理员审核通过后即可在<b>商圈</b>展示<br />
-          通常在 24 小时内完成审核
+          {isEdit ? (
+            <>你的商家信息已更新<br />（不影响当前审核状态）</>
+          ) : (
+            <>你的商家入驻申请已收到<br />管理员审核通过后即可在<b>商圈</b>展示<br />通常在 24 小时内完成审核</>
+          )}
         </p>
         <div style={{ background: '#F5F0FA', border: '1px solid #E0D0F0', borderRadius: 14,
           padding: '14px 18px', fontSize: 13, color: '#7B4F9E', lineHeight: 1.6, maxWidth: 280 }}>
@@ -145,9 +149,9 @@ export default function RegisterMerchantPage() {
   }
 
   const STATUS_META = {
-    pending:  { label: '审核中', color: '#9A6A00', bg: '#FFF7E6', border: '#F0D58A' },
-    approved: { label: '已通过 · 商圈展示中', color: '#1A4F2E', bg: '#F2F8F3', border: '#A8D8B8' },
-    rejected: { label: '未通过，请修改后重新提交', color: '#A02828', bg: '#FBEDEA', border: '#F0B8B0' },
+    pending: { label: '审核中', color: '#9A6A00', bg: '#FFF7E6', border: '#F0D58A' },
+    active:  { label: '已通过 · 商圈展示中', color: '#1A4F2E', bg: '#F2F8F3', border: '#A8D8B8' },
+    closed:  { label: '已下架', color: '#888', bg: '#F2F2F2', border: '#DADADA' },
   }
   const sm = status && STATUS_META[status]
 
@@ -170,7 +174,7 @@ export default function RegisterMerchantPage() {
       <div style={{ padding: '10px 16px', background: '#F5F0FA', margin: '0 16px',
         borderRadius: 12, fontSize: 12.5, color: '#7B4F9E', lineHeight: 1.6, marginBottom: 0 }}>
         {isEdit
-          ? '🏪 修改后需管理员重新审核，审核通过后更新展示。'
+          ? '🏪 修改资料即时生效，不影响当前审核状态。'
           : '🏪 提交后由管理员审核，审核通过后在商圈展示。免费入驻，真实商家优先认证。'}
       </div>
 

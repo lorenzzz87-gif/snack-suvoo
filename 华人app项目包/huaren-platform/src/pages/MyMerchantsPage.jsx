@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
 const STATUS_META = {
-  pending:  { label: '审核中', color: '#9A6A00', bg: '#FFF7E6', border: '#F0D58A' },
-  approved: { label: '展示中', color: '#1A4F2E', bg: '#F2F8F3', border: '#A8D8B8' },
-  rejected: { label: '未通过', color: '#A02828', bg: '#FBEDEA', border: '#F0B8B0' },
+  pending: { label: '审核中', color: '#9A6A00', bg: '#FFF7E6', border: '#F0D58A' },
+  active:  { label: '展示中', color: '#1A4F2E', bg: '#F2F8F3', border: '#A8D8B8' },
+  closed:  { label: '已下架', color: '#888',    bg: '#F2F2F2', border: '#DADADA' },
 }
 
 export default function MyMerchantsPage() {
