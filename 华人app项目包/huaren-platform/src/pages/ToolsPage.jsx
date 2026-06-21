@@ -4,6 +4,11 @@ import Logo from '../components/Logo'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
 
+// Edge Function 调用所需（anon/publishable key 本就是公开的，硬编码 fallback 保证生产环境一定有值）
+const SB_URL = import.meta.env.VITE_SUPABASE_URL || 'https://diaporthxebgtxljpwlw.supabase.co'
+const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GbHVKdso_UzRadXPEtDXbg_zLQPbf5A'
+const SB_FN_HEADERS = { 'Content-Type': 'application/json', Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY }
+
 // ── 汇率换算 ──────────────────────────────────────────────
 function CurrencyTool() {
   const [rates, setRates] = useState({ CNY: 7.82, USD: 1.08 })
@@ -22,9 +27,7 @@ function CurrencyTool() {
       .catch(() => setLastUpdate('离线估算'))
 
     // BTC & SPCX via edge function
-    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stock-price`, {
-      headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` }
-    })
+    fetch(`${SB_URL}/functions/v1/stock-price`, { headers: SB_FN_HEADERS })
       .then(r => r.json())
       .then(data => {
         if (data.btc || data.spcx) setInvest({
@@ -478,8 +481,8 @@ function GoldTool() {
     try {
       // 通过 Supabase Edge Function 代理（绕过 CORS）
       const res = await fetch(
-        'https://diaporthxebgtxljpwlw.supabase.co/functions/v1/gold-price',
-        { headers: { 'Content-Type': 'application/json' } }
+        `${SB_URL}/functions/v1/gold-price`,
+        { headers: SB_FN_HEADERS }
       )
       const data = await res.json()
       if (data.error || !data.eurPerGram) throw new Error(data.error || '无数据')
