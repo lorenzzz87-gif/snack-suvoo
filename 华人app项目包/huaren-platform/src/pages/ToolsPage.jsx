@@ -1077,8 +1077,7 @@ function eanModules(ean) {
 function EANTool() {
   const canvasRef = useRef()
   const videoRef = useRef()
-  const streamRef = useRef()
-  const rafRef = useRef()
+  const readerRef = useRef()
   const [input, setInput] = useState('')
   const [tpl, setTpl] = useState(0)
   const [preview, setPreview] = useState(null)
@@ -1092,39 +1091,23 @@ function EANTool() {
   ]
 
   function stopScan() {
-    cancelAnimationFrame(rafRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
+    try { readerRef.current?.reset() } catch {}
     setScanning(false)
   }
 
   async function startScan() {
-    if (!('BarcodeDetector' in window)) {
-      setScanMsg('')
-      alert('您的浏览器暂不支持扫码（推荐使用 Android Chrome），请手动输入数字')
-      return
-    }
     setScanning(true)
     setScanMsg('对准条码...')
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 } }
+      const { BrowserMultiFormatReader } = await import('@zxing/browser')
+      const reader = new BrowserMultiFormatReader()
+      readerRef.current = reader
+      await reader.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+        if (result) {
+          setInput(result.getText().replace(/\D/g, ''))
+          stopScan()
+        }
       })
-      streamRef.current = stream
-      videoRef.current.srcObject = stream
-      await videoRef.current.play()
-      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
-      const tick = async () => {
-        try {
-          const codes = await detector.detect(videoRef.current)
-          if (codes.length > 0) {
-            setInput(codes[0].rawValue.replace(/\D/g, ''))
-            stopScan()
-            return
-          }
-        } catch {}
-        rafRef.current = requestAnimationFrame(tick)
-      }
-      rafRef.current = requestAnimationFrame(tick)
     } catch {
       setScanning(false)
       setScanMsg('无法访问摄像头')
