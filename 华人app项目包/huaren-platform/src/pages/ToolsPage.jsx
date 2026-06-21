@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../components/Logo'
 import { useAuth } from '../App'
+import { supabase } from '../lib/supabase'
 
 // ── 汇率换算 ──────────────────────────────────────────────
 function CurrencyTool() {
@@ -21,13 +22,11 @@ function CurrencyTool() {
       .catch(() => setLastUpdate('离线估算'))
 
     // BTC & SPCX via edge function
-    import('../lib/supabase').then(({ supabase }) => {
-      supabase.functions.invoke('stock-price').then(({ data }) => {
-        if (data) setInvest({
-          btcEUR: data.btc?.priceEUR ?? null,
-          spcxEUR: data.spcx?.priceEUR ?? null,
-          spcxUSD: data.spcx?.priceUSD ?? null,
-        })
+    supabase.functions.invoke('stock-price').then(({ data }) => {
+      if (data) setInvest({
+        btcEUR: data.btc?.priceEUR ?? null,
+        spcxEUR: data.spcx?.priceEUR ?? null,
+        spcxUSD: data.spcx?.priceUSD ?? null,
       })
     })
   }, [])
