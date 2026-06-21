@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase'
 // Edge Function 调用所需（anon/publishable key 本就是公开的，硬编码 fallback 保证生产环境一定有值）
 const SB_URL = import.meta.env.VITE_SUPABASE_URL || 'https://diaporthxebgtxljpwlw.supabase.co'
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_GbHVKdso_UzRadXPEtDXbg_zLQPbf5A'
-const SB_FN_HEADERS = { 'Content-Type': 'application/json', Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY }
+// 注意：函数 CORS 只允许 authorization/content-type，不能加 apikey（否则预检被拒）
+const SB_FN_HEADERS = { Authorization: `Bearer ${SB_KEY}` }
 
 // ── 汇率换算 ──────────────────────────────────────────────
 function CurrencyTool() {
