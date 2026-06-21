@@ -39,7 +39,8 @@ export default function SearchPage() {
       .select(`
         id, title, type, trade_direction, city, district, price, is_pinned, created_at,
         categories(name_zh, slug, type),
-        users(nickname, is_verified)
+        users(nickname, is_verified),
+        post_attributes(key, value)
       `)
       .eq('status', 'active')
       .or(`title.ilike.%${term}%,description.ilike.%${term}%`)

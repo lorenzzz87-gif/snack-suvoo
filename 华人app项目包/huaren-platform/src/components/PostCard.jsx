@@ -83,7 +83,43 @@ function shortName(post) {
   if (!name) return ''
   // 含「/」的分类（如 汽配/摩配、鞋帽/箱包）取斜杠前半段，更整洁
   const base = name.includes('/') ? name.split('/')[0] : name
+  // 倒货板块：所有品类后面加「清仓」
+  if (post.type === 'wholesale') return `${base.slice(0, 5)}清仓`
+  // 二手板块：所有品类前面加「二手」（车辆买卖简化为「二手车辆」）
+  if (post.type === 'item') {
+    if (post.categories?.slug === 'item-vehicle') return '二手车辆'
+    return `二手${base.slice(0, 4)}`
+  }
   return base.length > 4 ? base.slice(0, 4) : base
+}
+
+// 把 post_attributes 数组转成 {key: value} 方便取值
+function attrMap(post) {
+  const m = {}
+  ;(post.post_attributes || []).forEach(a => { if (a?.key) m[a.key] = a.value })
+  return m
+}
+
+// 卡片第二行的属性信息（各板块取最有代表性的 1-2 个字段）
+function infoLine(post) {
+  const a = attrMap(post)
+  const join = arr => arr.filter(Boolean).join(' · ')
+  switch (post.type) {
+    case 'ride':
+      return a.from_city && a.to_city ? `${a.from_city} → ${a.to_city}` : join([a.from_city, a.to_city])
+    case 'rental':
+      return join([a.rooms, a.area, a.furnished === 'yes' ? '带家具' : null])
+    case 'item':
+      return join([a.condition, a.brand])
+    case 'wholesale':
+      return join([a.goods_condition, a.quantity && a.unit ? `${a.quantity}${a.unit}` : null])
+    case 'job':
+      return post.trade_direction === 'want'
+        ? join([a.position_wanted, a.experience])
+        : join([a.salary, a.work_hours])
+    default:
+      return ''
+  }
 }
 
 function timeAgo(dateStr) {
@@ -115,6 +151,11 @@ export default function PostCard({ post }) {
     ? (post.trade_direction === 'want' ? '找拼车' : '顺风车')
     : post.trade_direction === 'want' ? '找工作' : '招聘'
 
+  const info = infoLine(post)
+  const jobSalary = post.type === 'job' && post.trade_direction !== 'want' ? attrMap(post).salary : null
+  const muted = { fontSize: 11.5, color: 'var(--muted)' }
+  const ellipsis = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+
   return (
     <div
       className="card"
@@ -131,58 +172,60 @@ export default function PostCard({ post }) {
         )}
 
         {isItem ? (
-          <div className="card-row" style={{ gap: 10 }}>
-            <div className="thumb" style={
-              isRide ? { background: '#FBEDEA', fontSize: 0 }
-              : isVehicle ? { background: '#FBEDEA', fontSize: 0 }
-              : {}}>
+          <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
+            <div className="thumb" style={{
+              width: 72, height: 72,
+              ...(isRide || isVehicle ? { background: '#FBEDEA', fontSize: 0 } : {}),
+            }}>
               {isRide ? <CarpoolThumb />
                 : isVehicle ? <CarThumb />
                 : emoji}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h4>{post.title}</h4>
-              {post.price != null && (
-                <div className="price">€{Number(post.price).toLocaleString()}</div>
-              )}
-              <div className="sub">
-                {locationStr && <span>{locationStr}</span>}
-                <span>{timeAgo(post.created_at)}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <h4 style={{ margin: 0, ...ellipsis }}>{post.title}</h4>
+                {post.price != null && (
+                  <span className="price" style={{ margin: 0, flexShrink: 0 }}>€{Number(post.price).toLocaleString()}</span>
+                )}
+              </div>
+              {info && <div style={{ ...muted, marginTop: 7, ...ellipsis }}>{info}</div>}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
+                <span style={{ ...muted, ...ellipsis }}>{locationStr}</span>
+                <span style={{ ...muted, flexShrink: 0 }}>{timeAgo(post.created_at)}</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="card-row" style={{ gap: 10 }}>
-            <div className="thumb" style={{ background: post.trade_direction === 'want' ? '#EEF5F9' : '#E9F1EC', fontSize: 28 }}>
+          <div className="card-row" style={{ gap: 12, alignItems: 'center' }}>
+            <div className="thumb" style={{ width: 72, height: 72, background: post.trade_direction === 'want' ? '#EEF5F9' : '#E9F1EC', fontSize: 30 }}>
               {post.trade_direction === 'want' ? '📄' : emoji}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h4>{post.title}</h4>
-              <div className="meta">
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <h4 style={{ margin: 0, ...ellipsis }}>{post.title}</h4>
+                {jobSalary && <span className="price" style={{ margin: 0, fontSize: 14, flexShrink: 0 }}>{jobSalary}</span>}
+              </div>
+              <div className="meta" style={{ marginTop: 7 }}>
                 <span className="badge job">{typeLabel}</span>
                 {post.users?.is_verified && <span className="badge blue">✓ 认证</span>}
               </div>
-              <div className="sub">
-                {locationStr && <span>{locationStr}</span>}
-                <span>{timeAgo(post.created_at)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 8 }}>
+                <span style={{ ...muted, ...ellipsis }}>{locationStr}</span>
+                <span style={{ ...muted, flexShrink: 0 }}>{timeAgo(post.created_at)}</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 右侧图标区 */}
+      {/* 右侧分类区：竖排文字 */}
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '0 12px',
-        background: theme.bg, gap: 3, flexShrink: 0, minWidth: 56,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '0 13px', background: theme.bg, flexShrink: 0, minWidth: 46,
       }}>
-        {(isVehicle || isRide)
-          ? <CarIcon stroke={theme.text} bg={theme.bg} size={30} />
-          : <span style={{ fontSize: 22, lineHeight: 1 }}>{emoji}</span>
-        }
         {catShort && (
-          <span style={{ fontSize: 10, fontWeight: 700, color: theme.text, textAlign: 'center', lineHeight: 1.3 }}>
+          <span style={{ writingMode: 'vertical-rl', fontSize: 12, fontWeight: 700,
+            color: theme.text, letterSpacing: 3 }}>
             {catShort}
           </span>
         )}
