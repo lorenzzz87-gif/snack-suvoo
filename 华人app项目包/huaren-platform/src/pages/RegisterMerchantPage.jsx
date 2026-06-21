@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 
@@ -15,6 +15,8 @@ function Toast({ msg }) {
 export default function RegisterMerchantPage() {
   const navigate = useNavigate()
   const { session } = useAuth()
+  const [searchParams] = useSearchParams()
+  const editId = searchParams.get('id')   // 有值 = 编辑指定商家；无值 = 新增
   const [form, setForm] = useState({
     business_name: '', business_type: '', city: '',
     description: '', contact_phone: '', contact_wechat: '', address: '',
@@ -31,14 +33,14 @@ export default function RegisterMerchantPage() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(''), 2500) }
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })) }
 
-  // 进页面查是否已有商家记录 → 预填进入编辑模式
+  // 有 id 时加载指定商家预填进入编辑模式；无 id 则为新增
   useEffect(() => {
     if (!session) return
+    if (!editId) { setReady(true); return }
     supabase.from('merchants')
       .select('id, business_name, business_type, city, description, contact_phone, contact_wechat, address, status')
+      .eq('id', editId)
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
@@ -56,7 +58,7 @@ export default function RegisterMerchantPage() {
         }
         setReady(true)
       })
-  }, [session])
+  }, [session, editId])
 
   async function handleSubmit() {
     if (!form.business_name.trim()) { showToast('请填写商家名称'); return }
@@ -123,8 +125,8 @@ export default function RegisterMerchantPage() {
           如有问题可联系平台客服
         </div>
         <button className="btn-primary" style={{ marginTop: 8, width: 'auto', padding: '12px 32px' }}
-          onClick={() => navigate('/shangquan', { replace: true })}>
-          返回商圈
+          onClick={() => navigate('/my-merchants', { replace: true })}>
+          查看我的商家
         </button>
       </div>
     )

@@ -27,12 +27,9 @@ export default function ProfilePage() {
       .then(({ data }) => setProfile(data))
     supabase
       .from('merchants')
-      .select('id, status')
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => setMerchant(data))
+      .then(({ count }) => setMerchant({ count: count ?? 0 }))
   }, [session])
 
   async function handleLogout() {
@@ -82,13 +79,12 @@ export default function ProfilePage() {
             <span>我的收藏</span>
             <span className="arrow">›</span>
           </button>
-          <button className="menu-item" onClick={() => navigate('/merchant/register')}>
-            <span>🏪 我的商家{merchant ? '（管理）' : '（入驻）'}</span>
+          <button className="menu-item" onClick={() => navigate(merchant?.count ? '/my-merchants' : '/merchant/register')}>
+            <span>🏪 我的商家{merchant?.count ? '（管理）' : '（入驻）'}</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {merchant && (
-                <span style={{ fontSize: 12, fontWeight: 700,
-                  color: merchant.status === 'approved' ? '#1A4F2E' : merchant.status === 'rejected' ? '#A02828' : '#9A6A00' }}>
-                  {merchant.status === 'approved' ? '展示中' : merchant.status === 'rejected' ? '未通过' : '审核中'}
+              {merchant?.count > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>
+                  {merchant.count} 个
                 </span>
               )}
               <span className="arrow">›</span>
