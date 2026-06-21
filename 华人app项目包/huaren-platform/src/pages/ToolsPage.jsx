@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Logo from '../components/Logo'
 import { useAuth } from '../App'
 import { supabase } from '../lib/supabase'
@@ -1326,10 +1326,50 @@ const TOOLS = [
   { id: 'datefmt', icon: '📆', title: '中意日期格式转换', sub: '中文 ↔ 意大利 ↔ 国际格式', component: DateFormatTool },
 ]
 
+// 供搜索页匹配用的关键词（含别名/拼音/意大利语）
+export const TOOL_SEARCH = [
+  { id: 'currency',  icon: '💱', title: '汇率换算',            kw: '汇率 货币 欧元 人民币 美元 eur cny usd 比特币 btc spcx spacex 股价 换算' },
+  { id: 'qrcode',    icon: '📱', title: '二维码生成器',        kw: '二维码 qr qrcode 扫码 微信 网址 码' },
+  { id: 'cf',        icon: '🪪', title: 'Codice Fiscale 生成', kw: 'cf codice fiscale 税号 意大利税号 绿卡' },
+  { id: 'ean',       icon: '📊', title: 'EAN 条码生成器',      kw: 'ean 条码 条形码 barcode 商品码 13' },
+  { id: 'iva',       icon: '🧾', title: '增值税 IVA',          kw: 'iva 增值税 含税 不含税 税' },
+  { id: 'salary',    icon: '💰', title: '工资换算',            kw: '工资 月薪 日薪 时薪 薪水' },
+  { id: 'profit',    icon: '📈', title: '利润率计算',          kw: '利润 利润率 进价 售价 毛利' },
+  { id: 'permit',    icon: '🪪', title: '居留证倒计时',        kw: '居留 居留证 permesso 倒计时 到期' },
+  { id: 'discount',  icon: '🏷️', title: '折扣计算',            kw: '折扣 打折 折后 优惠' },
+  { id: 'split',     icon: '🍽️', title: 'AA制分摊',            kw: 'aa 分摊 聚餐 平摊 aa制' },
+  { id: 'bulk',      icon: '📦', title: '进货成本计算',        kw: '进货 成本 批发 运费' },
+  { id: 'loan',      icon: '🏦', title: '贷款还款计算',        kw: '贷款 还款 月供 利息 房贷 mutuo' },
+  { id: 'gold',      icon: '🥇', title: '黄金价格换算',        kw: '黄金 金价 gold 克 斤' },
+  { id: 'permitfee', icon: '📋', title: '居留办理费用清单',    kw: '居留 费用 印花税 邮政 制证' },
+  { id: 'holiday',   icon: '📅', title: '意大利节假日',        kw: '节假日 假期 holiday 公共假日 放假' },
+  { id: 'shipping',  icon: '🚚', title: '快递费估算',          kw: '快递 运费 brt sda gls dhl 邮费' },
+  { id: 'weight',    icon: '⚖️', title: '重量换算',            kw: '重量 斤 公斤 磅 克 kg' },
+  { id: 'size',      icon: '👟', title: '尺码换算',            kw: '尺码 鞋码 衣码 size 码数' },
+  { id: 'area',      icon: '📐', title: '面积换算',            kw: '面积 平方米 平方英尺 坪' },
+  { id: 'saldi',     icon: '🛍️', title: '打折季倒计时',        kw: 'saldi 打折季 倒计时 促销' },
+  { id: 'itnums',    icon: '✍️', title: '支票金额转意大利语',  kw: '支票 金额 意大利语 assegno' },
+  { id: 'datefmt',   icon: '📆', title: '中意日期格式转换',    kw: '日期 格式 date 转换' },
+]
+
 export default function ToolsPage() {
   const navigate = useNavigate()
   const { session } = useAuth()
-  const [open, setOpen] = useState('currency')
+  const [searchParams] = useSearchParams()
+  const initial = searchParams.get('open')
+  const [open, setOpen] = useState(
+    initial && TOOLS.some(t => t.id === initial) ? initial : 'currency'
+  )
+
+  // 从搜索跳转过来时，展开并滚动到对应工具
+  useEffect(() => {
+    if (initial && TOOLS.some(t => t.id === initial)) {
+      setOpen(initial)
+      setTimeout(() => {
+        document.getElementById(`tool-${initial}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [initial])
 
   return (
     <>
@@ -1365,8 +1405,8 @@ export default function ToolsPage() {
           const isOpen = open === tool.id
           const Component = tool.component
           return (
-            <div key={tool.id} style={{ background: '#fff', border: `1px solid ${isOpen ? 'var(--ink)' : 'var(--line)'}`,
-              borderRadius: 16, overflow: 'hidden', transition: 'border-color .2s' }}>
+            <div key={tool.id} id={`tool-${tool.id}`} style={{ background: '#fff', border: `1px solid ${isOpen ? 'var(--ink)' : 'var(--line)'}`,
+              borderRadius: 16, overflow: 'hidden', transition: 'border-color .2s', scrollMarginTop: 70 }}>
               {/* 工具头部 */}
               <div onClick={() => setOpen(isOpen ? null : tool.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer' }}>
