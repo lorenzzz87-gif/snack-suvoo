@@ -53,7 +53,7 @@ function CarThumb() {
 }
 
 const TYPE_EMOJI = {
-  'job-restaurant': '🍜', 'job-retail': '🛍️', 'job-factory': '🏭',
+  'job-restaurant': '🧑‍🍳', 'job-retail': '🛍️', 'job-factory': '🏭',
   'job-driver': '🚚', 'job-domestic': '🏠', 'job-office': '📋',
   'job-other': '💼', 'item-appliance': '📺', 'item-furniture': '🛋️',
   'item-electronics': '📱', 'item-vehicle': '🚗', 'item-restaurant': '🫕',
