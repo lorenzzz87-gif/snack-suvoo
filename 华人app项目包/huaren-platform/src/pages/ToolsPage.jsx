@@ -1300,6 +1300,30 @@ function EANTool() {
   )
 }
 
+// ── Google Flights 深链编码（tfs= protobuf，能自动预填）──────
+// 结构与开源库 fast-flights 完全一致（已逐字节核对）：
+//   Info{ data(3) 重复, passengers(8) packed, seat(9), trip(19) }
+//   FlightData{ date(2), from_flight(13), to_flight(14) }, Airport{ airport(2) }
+function _varint(n) { const a = []; n = n >>> 0; do { let b = n & 0x7f; n >>>= 7; if (n > 0) b |= 0x80; a.push(b) } while (n > 0); return a }
+function _tag(f, wt) { return _varint((f << 3) | wt) }
+function _str(s) { return Array.from(new TextEncoder().encode(s)) }
+function _ld(f, p) { return [..._tag(f, 2), ..._varint(p.length), ...p] }  // 长度前缀字段
+function _airport(code) { return _ld(2, _str(code)) }
+function _flightData(leg) {
+  return [..._ld(2, _str(leg.date)), ..._ld(13, _airport(leg.from)), ..._ld(14, _airport(leg.to))]
+}
+function googleFlightsTfsUrl(legs, seatVal, paxList, tripVal) {
+  const out = []
+  for (const leg of legs) out.push(..._ld(3, _flightData(leg)))   // data 重复
+  const pax = []; for (const p of paxList) pax.push(..._varint(p))
+  out.push(..._ld(8, pax))                                         // passengers packed
+  out.push(..._tag(9, 0), ..._varint(seatVal))                    // seat
+  out.push(..._tag(19, 0), ..._varint(tripVal))                   // trip
+  let bin = ''; for (const b of out) bin += String.fromCharCode(b)
+  const b64 = btoa(bin)
+  return 'https://www.google.com/travel/flights?tfs=' + encodeURIComponent(b64)
+}
+
 // ── 机票查询 · 寻低价（跳转 Google Flights）──────────────────
 function FlightTool() {
   // 机场列表：以后想加机场，照格式加一行（左边中文显示，右边三字代码）
@@ -1309,7 +1333,8 @@ function FlightTool() {
     '上海浦东 PVG': 'PVG', '北京大兴 PKX': 'PKX', '广州 CAN': 'CAN',
     '温州 WNZ': 'WNZ', '杭州 HGH': 'HGH', '深圳 SZX': 'SZX',
   }
-  const CABINS = { '经济舱': 'economy', '超级经济舱': 'premium economy', '商务舱': 'business', '头等舱': 'first' }
+  // 舱位 → Google Flights 的 seat 编号（economy=1 / premium=2 / business=3 / first=4）
+  const CABINS = { '经济舱': 1, '超级经济舱': 2, '商务舱': 3, '头等舱': 4 }
   const names = Object.keys(AIRPORTS)
 
   const [from, setFrom] = useState('罗马 FCO')
@@ -1332,14 +1357,14 @@ function FlightTool() {
     if (!dep) { setErr('请选择出发日期'); return }
     if (trip === 'round' && !ret) { setErr('往返请选择返程日期'); return }
 
-    // 拼一句自然语言查询，Google Flights 能识别航线/日期/人数/舱位
-    let q = `Flights from ${AIRPORTS[from]} to ${AIRPORTS[to]} on ${dep}`
-    if (trip === 'round' && ret) q += ` returning on ${ret}`
-    q += ` for ${adults} adult${adults > 1 ? 's' : ''}`
-    if (children > 0) q += ` ${children} child${children > 1 ? 'ren' : ''}`
-    q += ` ${CABINS[cabin]} class`
-
-    const url = 'https://www.google.com/travel/flights?q=' + encodeURIComponent(q)
+    // 用 tfs 深链（能自动预填）。往返时第二段是返程（目的地↔出发地对调）
+    const f = AIRPORTS[from], t = AIRPORTS[to]
+    const legs = trip === 'round'
+      ? [{ date: dep, from: f, to: t }, { date: ret, from: t, to: f }]
+      : [{ date: dep, from: f, to: t }]
+    const pax = [...Array(adults).fill(1), ...Array(children).fill(2)]  // 1=成人 2=儿童
+    const tripVal = trip === 'round' ? 1 : 2
+    const url = googleFlightsTfsUrl(legs, CABINS[cabin], pax, tripVal)
     window.open(url, '_blank')
   }
 
