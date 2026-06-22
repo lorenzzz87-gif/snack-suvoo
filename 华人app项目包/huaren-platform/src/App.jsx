@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import LoginPage from './pages/LoginPage'
+import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import CreatePostPage from './pages/CreatePostPage'
 import PostDetailPage from './pages/PostDetailPage'
@@ -75,7 +76,7 @@ function AuthCallback() {
   const navigate = useNavigate()
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      navigate(session ? '/' : '/login', { replace: true })
+      navigate(session ? '/app' : '/login', { replace: true })
     })
   }, [navigate])
   return <div className="loading">登录中…</div>
@@ -85,10 +86,11 @@ function AuthCallback() {
 function Shell({ children }) {
   const location = useLocation()
   const { needsSetup, session } = useAuth()
-  const noNav = ['/login', '/setup'].includes(location.pathname)
+  // 落地宣传页 '/' 和登录/设置页不显示底部导航
+  const noNav = ['/', '/login', '/setup'].includes(location.pathname)
 
-  // 登录后未完成设置 → 自动跳到 setup（跳过页除外）
-  if (session && needsSetup && location.pathname !== '/setup') {
+  // 登录后未完成设置 → 自动跳到 setup（落地页/设置页除外，宣传页始终可访问）
+  if (session && needsSetup && !['/', '/setup'].includes(location.pathname)) {
     return <Navigate to="/setup" replace />
   }
 
@@ -107,7 +109,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/app" element={<HomePage />} />
           <Route path="/post/:id" element={<PostDetailPage />} />
           <Route path="/wholesale" element={<WholesalePage />} />
           <Route
@@ -140,7 +143,7 @@ export default function App() {
             path="/profile"
             element={<RequireAuth><ProfilePage /></RequireAuth>}
           />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
       </Shell>
     </AuthProvider>
