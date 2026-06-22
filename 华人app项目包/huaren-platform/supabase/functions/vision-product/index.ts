@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json',
 }
 
@@ -69,13 +69,10 @@ serve(async (req) => {
     const web = result?.webDetection
 
     const productName = web?.bestGuessLabels?.[0]?.label || ''
-    // 图片优先级：完全匹配 > 部分匹配 > 视觉相似（兜底，保证总有图可选）
-    const pick = arr => (arr || []).map(i => i.url).filter(u => u?.startsWith('http'))
-    const fullMatches = pick(web?.fullMatchingImages)
-    const partialMatches = pick(web?.partialMatchingImages)
-    const similarMatches = pick(web?.visuallySimilarImages)
-    // 去重后按优先级补足到 6 张
-    const webImages = [...new Set([...fullMatches, ...partialMatches, ...similarMatches])].slice(0, 6)
+    // 第一版逻辑：只取完全匹配 + 部分匹配（最准），不掺视觉相似图
+    const fullMatches = (web?.fullMatchingImages || []).map(i => i.url).filter(u => u?.startsWith('http'))
+    const partialMatches = (web?.partialMatchingImages || []).map(i => i.url).filter(u => u?.startsWith('http'))
+    const webImages = [...new Set([...fullMatches, ...partialMatches])].slice(0, 6)
 
     const entities = (web?.webEntities || [])
       .filter(e => e.score > 0.3 && e.description)
