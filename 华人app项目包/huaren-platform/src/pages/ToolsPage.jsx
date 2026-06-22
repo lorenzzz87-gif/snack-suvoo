@@ -1300,9 +1300,141 @@ function EANTool() {
   )
 }
 
+// ── 机票查询 · 寻低价（跳转 Google Flights）──────────────────
+function FlightTool() {
+  // 机场列表：以后想加机场，照格式加一行（左边中文显示，右边三字代码）
+  const AIRPORTS = {
+    '罗马 FCO': 'FCO', '米兰 MXP': 'MXP', '那不勒斯 NAP': 'NAP',
+    '博洛尼亚 BLQ': 'BLQ', '巴里 BRI': 'BRI',
+    '上海浦东 PVG': 'PVG', '北京大兴 PKX': 'PKX', '广州 CAN': 'CAN',
+    '温州 WNZ': 'WNZ', '杭州 HGH': 'HGH', '深圳 SZX': 'SZX',
+  }
+  const CABINS = { '经济舱': 'economy', '超级经济舱': 'premium economy', '商务舱': 'business', '头等舱': 'first' }
+  const names = Object.keys(AIRPORTS)
+
+  const [from, setFrom] = useState('罗马 FCO')
+  const [to, setTo] = useState('上海浦东 PVG')
+  const [trip, setTrip] = useState('one')   // one=单程, round=往返
+  const [dep, setDep] = useState('')
+  const [ret, setRet] = useState('')
+  const [cabin, setCabin] = useState('经济舱')
+  const [adults, setAdults] = useState(1)
+  const [children, setChildren] = useState(0)
+  const [err, setErr] = useState('')
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  function swap() { const a = from; setFrom(to); setTo(a) }
+
+  function search() {
+    setErr('')
+    if (AIRPORTS[from] === AIRPORTS[to]) { setErr('出发和到达城市不能相同'); return }
+    if (!dep) { setErr('请选择出发日期'); return }
+    if (trip === 'round' && !ret) { setErr('往返请选择返程日期'); return }
+
+    // 拼一句自然语言查询，Google Flights 能识别航线/日期/人数/舱位
+    let q = `Flights from ${AIRPORTS[from]} to ${AIRPORTS[to]} on ${dep}`
+    if (trip === 'round' && ret) q += ` returning on ${ret}`
+    q += ` for ${adults} adult${adults > 1 ? 's' : ''}`
+    if (children > 0) q += ` ${children} child${children > 1 ? 'ren' : ''}`
+    q += ` ${CABINS[cabin]} class`
+
+    const url = 'https://www.google.com/travel/flights?q=' + encodeURIComponent(q)
+    window.open(url, '_blank')
+  }
+
+  const selStyle = { width: '100%', padding: '10px 12px', borderRadius: 10,
+    border: '1px solid var(--line)', background: '#fff', fontSize: 15, fontFamily: 'inherit' }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px' }}>
+        填好信息点搜索，自动跳转 Google Flights 比价下单
+      </p>
+
+      {/* 出发 / 到达 */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>出发城市</label>
+          <select value={from} onChange={e => setFrom(e.target.value)} style={selStyle}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <button onClick={swap} title="对调"
+          style={{ flexShrink: 0, width: 40, height: 42, borderRadius: 10, border: '1px solid var(--line)',
+            background: '#fff', fontSize: 16, cursor: 'pointer' }}>⇄</button>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>到达城市</label>
+          <select value={to} onChange={e => setTo(e.target.value)} style={selStyle}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* 单程 / 往返 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {[['one', '单程'], ['round', '往返']].map(([v, label]) => (
+          <button key={v} onClick={() => setTrip(v)}
+            style={{ flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+              border: `1.5px solid ${trip === v ? '#C53A2E' : 'var(--line)'}`,
+              background: trip === v ? 'var(--red-soft)' : '#fff',
+              color: trip === v ? 'var(--red)' : 'var(--muted)' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 日期 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>出发日期</label>
+          <input type="date" value={dep} min={today} onChange={e => setDep(e.target.value)} style={selStyle} />
+        </div>
+        {trip === 'round' && (
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 12, color: 'var(--muted)' }}>返程日期</label>
+            <input type="date" value={ret} min={dep || today} onChange={e => setRet(e.target.value)} style={selStyle} />
+          </div>
+        )}
+      </div>
+
+      {/* 舱位 / 人数 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <div style={{ flex: 1.2 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>舱位</label>
+          <select value={cabin} onChange={e => setCabin(e.target.value)} style={selStyle}>
+            {Object.keys(CABINS).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>成人</label>
+          <select value={adults} onChange={e => setAdults(Number(e.target.value))} style={selStyle}>
+            {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: 12, color: 'var(--muted)' }}>儿童</label>
+          <select value={children} onChange={e => setChildren(Number(e.target.value))} style={selStyle}>
+            {[0,1,2,3,4].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {err && <p style={{ color: '#C53A2E', fontSize: 13, margin: '-6px 0 12px' }}>{err}</p>}
+
+      <button className="btn-primary" onClick={search}>✈️ 搜索机票（跳转 Google Flights）</button>
+      <p style={{ color: 'var(--muted)', fontSize: 11.5, margin: '10px 0 0', lineHeight: 1.6 }}>
+        数据与下单都在 Google Flights 完成，价格以其页面为准。
+      </p>
+    </div>
+  )
+}
+
 // ── 主页面 ────────────────────────────────────────────────
 const TOOLS = [
   { id: 'currency', icon: '💱', title: '汇率换算', sub: 'EUR · CNY · USD 实时换算', component: CurrencyTool },
+  { id: 'flight', icon: '✈️', title: '机票查询 · 寻低价', sub: '填信息一键跳 Google Flights 比价', component: FlightTool },
   { id: 'qrcode', icon: '📱', title: '二维码生成器', sub: '网址/微信/手机号 · 3种模版 · 可加文字', component: QRCodeTool },
   { id: 'cf', icon: '🪪', title: 'Codice Fiscale 生成', sub: '意大利税号生成器（中国出生）', component: CFTool },
   { id: 'ean', icon: '📊', title: 'EAN 条码生成器', sub: 'EAN-13 · 黑白2种模版 · 可下载', component: EANTool },
@@ -1329,6 +1461,7 @@ const TOOLS = [
 // 供搜索页匹配用的关键词（含别名/拼音/意大利语）
 export const TOOL_SEARCH = [
   { id: 'currency',  icon: '💱', title: '汇率换算',            kw: '汇率 货币 欧元 人民币 美元 eur cny usd 比特币 btc spcx spacex 股价 换算' },
+  { id: 'flight',    icon: '✈️', title: '机票查询 · 寻低价',    kw: '机票 航班 飞机 低价 便宜 特价 google flights 回国 voli' },
   { id: 'qrcode',    icon: '📱', title: '二维码生成器',        kw: '二维码 qr qrcode 扫码 微信 网址 码' },
   { id: 'cf',        icon: '🪪', title: 'Codice Fiscale 生成', kw: 'cf codice fiscale 税号 意大利税号 绿卡' },
   { id: 'ean',       icon: '📊', title: 'EAN 条码生成器',      kw: 'ean 条码 条形码 barcode 商品码 13' },
