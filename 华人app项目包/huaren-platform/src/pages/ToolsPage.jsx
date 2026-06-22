@@ -1369,7 +1369,10 @@ function FlightTool() {
   }
 
   const selStyle = { width: '100%', padding: '10px 12px', borderRadius: 10,
-    border: '1px solid var(--line)', background: '#fff', fontSize: 15, fontFamily: 'inherit' }
+    border: '1px solid var(--line)', background: '#fff', fontSize: 15, fontFamily: 'inherit',
+    boxSizing: 'border-box' }
+  // 日期框专用：iOS 上 date 输入有固定内在宽度，需要这些才能在 flex 里正常收缩
+  const dateStyle = { ...selStyle, WebkitAppearance: 'none', appearance: 'none', minWidth: 0 }
 
   return (
     <div>
@@ -1412,14 +1415,14 @@ function FlightTool() {
 
       {/* 日期 */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <label style={{ fontSize: 12, color: 'var(--muted)' }}>出发日期</label>
-          <input type="date" value={dep} min={today} onChange={e => setDep(e.target.value)} style={selStyle} />
+          <input type="date" value={dep} min={today} onChange={e => setDep(e.target.value)} style={dateStyle} />
         </div>
         {trip === 'round' && (
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <label style={{ fontSize: 12, color: 'var(--muted)' }}>返程日期</label>
-            <input type="date" value={ret} min={dep || today} onChange={e => setRet(e.target.value)} style={selStyle} />
+            <input type="date" value={ret} min={dep || today} onChange={e => setRet(e.target.value)} style={dateStyle} />
           </div>
         )}
       </div>
