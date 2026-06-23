@@ -1459,6 +1459,147 @@ function FlightTool() {
   )
 }
 
+// ── 居留进度查询（剪贴板 + 跳官方页，不爬不存）──────────────
+function PermessoTool() {
+  const [raw, setRaw] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // 归一化：去空格/横杠、转大写
+  const norm = raw.replace(/[\s\-]/g, '').toUpperCase()
+  const len = norm.length
+  const isAssicurata = /^\d{12}$/.test(norm)        // 12位纯数字 = 邮局收据号
+  const isPratica = /^[A-Z0-9]{10}$/.test(norm)     // 10位字母数字 = 警察局受理号
+  const kind = isAssicurata ? 'assicurata' : isPratica ? 'pratica' : null
+  const recognized = !!kind
+  const target = len > 10 ? 12 : 10
+
+  // 动态提示
+  let hint = '输入收据号 / 受理号开始查询'
+  if (kind === 'pratica') hint = '✓ 识别为 Pratica（警察局受理号，10位）'
+  else if (kind === 'assicurata') hint = '✓ 识别为 Assicurata（邮局收据号，12位）'
+  else if (len > 0 && len < 10) hint = `还差 ${10 - len} 位（pratica 共10位）`
+  else if (len === 10) hint = '10位但含非字母数字字符，请核对'
+  else if (len === 11) hint = '11位：再多1位=assicurata(12位数字)，少1位=pratica(10位)'
+  else if (len === 12) hint = '12位但非全数字，邮局收据号应为纯数字'
+  else if (len > 12) hint = '超过12位，请核对邮局收据号'
+
+  // 徽章
+  const badge = kind === 'pratica'
+    ? { t: 'Pratica · 受理号', c: '#1A4F6A', bg: '#EAF2F7', b: '#B8D4E2' }
+    : kind === 'assicurata'
+    ? { t: 'Assicurata · 收据号', c: '#5B3B7A', bg: '#F3EEFA', b: '#DCCCEF' }
+    : len === 0
+    ? { t: '等待输入', c: 'var(--muted)', bg: 'var(--paper)', b: 'var(--line)' }
+    : { t: '长度不符', c: '#9A6A00', bg: '#FFF7E6', b: '#F0D58A' }
+
+  async function copyNumber() {
+    try {
+      await navigator.clipboard.writeText(norm)
+    } catch {
+      // 降级：隐藏 textarea + execCommand
+      const ta = document.createElement('textarea')
+      ta.value = norm; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta); ta.focus(); ta.select()
+      try { document.execCommand('copy') } catch {}
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 6000)
+  }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 14px', lineHeight: 1.7 }}>
+        输入号码 → 一键复制并打开官方查询页 → 粘贴后点 Cerca。号码只在本地处理、不保存。
+      </p>
+
+      {/* 号码输入 */}
+      <div className="field" style={{ marginBottom: 8 }}>
+        <label htmlFor="permesso-input">收据号 / 受理号</label>
+        <input id="permesso-input" type="text" inputMode="text" autoComplete="off"
+          placeholder="如 0123456789 或 123456789012"
+          value={raw} onChange={e => setRaw(e.target.value)}
+          style={{ fontFamily: 'ui-monospace, Menlo, monospace', letterSpacing: 1, fontSize: 16 }} />
+      </div>
+
+      {/* 徽章 + 字数 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: badge.c, background: badge.bg,
+          border: `1px solid ${badge.b}`, borderRadius: 99, padding: '3px 10px' }}>{badge.t}</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'ui-monospace, monospace' }}>{len} / {target}</span>
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.6 }}>{hint}</div>
+
+      {/* 主操作：复制 + 跳官方页（识别成功才可点）*/}
+      {recognized ? (
+        <a href="https://questure.poliziadistato.it/stranieri/" target="_blank" rel="noopener noreferrer"
+          onClick={copyNumber}
+          style={{ display: 'block', textAlign: 'center', textDecoration: 'none',
+            background: 'var(--red)', color: '#fff', borderRadius: 12, padding: '13px',
+            fontSize: 15, fontWeight: 700 }}>
+          📋 复制号码并打开官方查询页
+        </a>
+      ) : (
+        <button disabled
+          style={{ width: '100%', background: 'var(--line)', color: 'var(--muted)', border: 'none',
+            borderRadius: 12, padding: '13px', fontSize: 15, fontWeight: 700, cursor: 'not-allowed' }}>
+          📋 复制号码并打开官方查询页
+        </button>
+      )}
+
+      {copied && (
+        <div style={{ marginTop: 10, background: 'var(--green-soft)', color: 'var(--green)',
+          border: '1px solid var(--green)', borderRadius: 10, padding: '10px 12px', fontSize: 13, lineHeight: 1.7 }}>
+          ✅ 号码 <b style={{ fontFamily: 'ui-monospace, monospace' }}>{norm}</b> 已复制，官方页已在新标签打开——在那边<b>粘贴</b>到输入框，点 <b>Cerca / 搜索</b>。
+        </div>
+      )}
+
+      {/* 第二渠道：Portale Immigrazione */}
+      <div style={{ marginTop: 18, background: 'var(--paper)', border: '1px solid var(--line)',
+        borderRadius: 12, padding: '13px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 14, fontWeight: 800 }}>邮局 kit 进度</span>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#5B3B7A', background: '#F3EEFA',
+            border: '1px solid #DCCCEF', borderRadius: 6, padding: '1px 7px' }}>需账号登录</span>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7, margin: '0 0 10px' }}>
+          通过邮政 kit 办理的，要用收据上的 <b>UserID + 密码</b>登录查询，号码<b>无法自动填</b>，请备好收据。
+        </p>
+        <a href="https://www.portaleimmigrazione.it/" target="_blank" rel="noopener noreferrer"
+          style={{ display: 'block', textAlign: 'center', textDecoration: 'none',
+            border: '1px solid var(--line)', color: 'var(--ink)', borderRadius: 10, padding: '10px',
+            fontSize: 14, fontWeight: 700 }}>
+          打开 Portale Immigrazione →
+        </a>
+      </div>
+
+      {/* 读懂查询结果 */}
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', marginBottom: 8, letterSpacing: 1 }}>读懂查询结果</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            { tag: 'in trattazione', c: '#9A6A00', bg: '#FFF7E6', b: '#F0D58A', d: '处理中，正常，不代表有问题' },
+            { tag: 'pronto / consegna', c: '#1A4F2E', bg: '#F2F8F3', b: '#A8D8B8', d: '已办好可领取，按页面提示去 Questura 领（部分城市发短信）' },
+            { tag: '60–90 giorni', c: '#1A4F6A', bg: '#EAF2F7', b: '#B8D4E2', d: '参考时限，实际常更久，最长可到 180 天' },
+          ].map(r => (
+            <div key={r.tag} style={{ display: 'flex', gap: 10, alignItems: 'flex-start',
+              background: r.bg, border: `1px solid ${r.b}`, borderRadius: 10, padding: '9px 11px' }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: r.c, whiteSpace: 'nowrap',
+                fontFamily: 'ui-monospace, monospace' }}>{r.tag}</span>
+              <span style={{ fontSize: 12.5, color: '#3d382f', lineHeight: 1.6 }}>{r.d}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 隐私说明 */}
+      <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.7 }}>
+        🔒 号码只在你手机本地处理、<b>不保存不上传</b>。官方页打不开多为官网维护 / 访问保护，换个时间再试。
+      </p>
+    </div>
+  )
+}
+
 // ── 主页面 ────────────────────────────────────────────────
 const TOOLS = [
   { id: 'currency', icon: '💱', title: '汇率换算', sub: 'EUR · CNY · USD 实时换算', component: CurrencyTool },
@@ -1470,6 +1611,7 @@ const TOOLS = [
   { id: 'salary', icon: '💰', title: '工资换算', sub: '月薪 · 日薪 · 时薪', component: SalaryTool },
   { id: 'profit', icon: '📈', title: '利润率计算', sub: '进价+售价 → 利润/利润率', component: ProfitTool },
   { id: 'permit', icon: '🪪', title: '居留证倒计时', sub: '输入到期日，实时提醒', component: PermitTool },
+  { id: 'permesso', icon: '🔎', title: '居留进度查询', sub: '一键查 permesso 办理状态', component: PermessoTool },
   { id: 'discount', icon: '🏷️', title: '折扣计算', sub: '折后价格 · 节省金额', component: DiscountTool },
   { id: 'split', icon: '🍽️', title: 'AA制分摊', sub: '多人聚餐快速平摊', component: SplitTool },
   { id: 'bulk', icon: '📦', title: '进货成本计算', sub: '多品 × 单价 + 运费 = 总成本', component: BulkCostTool },
@@ -1497,6 +1639,7 @@ export const TOOL_SEARCH = [
   { id: 'salary',    icon: '💰', title: '工资换算',            kw: '工资 月薪 日薪 时薪 薪水' },
   { id: 'profit',    icon: '📈', title: '利润率计算',          kw: '利润 利润率 进价 售价 毛利' },
   { id: 'permit',    icon: '🪪', title: '居留证倒计时',        kw: '居留 居留证 permesso 倒计时 到期' },
+  { id: 'permesso',  icon: '🔎', title: '居留进度查询',        kw: '居留 进度 查询 permesso pratica assicurata 受理号 收据号 questura 警察局 邮局 办理状态' },
   { id: 'discount',  icon: '🏷️', title: '折扣计算',            kw: '折扣 打折 折后 优惠' },
   { id: 'split',     icon: '🍽️', title: 'AA制分摊',            kw: 'aa 分摊 聚餐 平摊 aa制' },
   { id: 'bulk',      icon: '📦', title: '进货成本计算',        kw: '进货 成本 批发 运费' },
