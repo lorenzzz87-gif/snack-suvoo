@@ -1492,19 +1492,21 @@ function PermessoTool() {
     ? { t: '等待输入', c: 'var(--muted)', bg: 'var(--paper)', b: 'var(--line)' }
     : { t: '长度不符', c: '#9A6A00', bg: '#FFF7E6', b: '#F0D58A' }
 
-  async function copyNumber() {
+  function copyNumber() {
+    // 同步 execCommand 优先：在点击手势内最稳，且能赶在新标签打开前完成
     try {
-      await navigator.clipboard.writeText(norm)
-    } catch {
-      // 降级：隐藏 textarea + execCommand
       const ta = document.createElement('textarea')
-      ta.value = norm; ta.style.position = 'fixed'; ta.style.opacity = '0'
+      ta.value = norm
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0'
       document.body.appendChild(ta); ta.focus(); ta.select()
-      try { document.execCommand('copy') } catch {}
+      ta.setSelectionRange(0, norm.length)
+      document.execCommand('copy')
       document.body.removeChild(ta)
-    }
+    } catch {}
+    // 现代剪贴板 API 作为增强（不阻塞）
+    try { navigator.clipboard?.writeText(norm) } catch {}
     setCopied(true)
-    setTimeout(() => setCopied(false), 6000)
+    setTimeout(() => setCopied(false), 12000)
   }
 
   return (
@@ -1551,6 +1553,13 @@ function PermessoTool() {
         <div style={{ marginTop: 10, background: 'var(--green-soft)', color: 'var(--green)',
           border: '1px solid var(--green)', borderRadius: 10, padding: '10px 12px', fontSize: 13, lineHeight: 1.7 }}>
           ✅ 号码 <b style={{ fontFamily: 'ui-monospace, monospace' }}>{norm}</b> 已复制，官方页已在新标签打开——在那边<b>粘贴</b>到输入框，点 <b>Cerca / 搜索</b>。
+          <div style={{ marginTop: 8 }}>
+            <button onClick={copyNumber}
+              style={{ background: '#fff', color: 'var(--green)', border: '1px solid var(--green)',
+                borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              📋 粘贴没成功？再复制一次
+            </button>
+          </div>
         </div>
       )}
 
