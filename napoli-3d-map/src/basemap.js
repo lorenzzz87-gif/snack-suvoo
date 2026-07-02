@@ -1,6 +1,9 @@
 // 完全本地化的底图样式：矢量数据与 DEM 瓦片均随应用分发，不依赖外部服务
-const TERRAIN_TILES = '/dem/{z}/{x}/{y}.png';
+// 资源 URL 基于部署路径解析，支持子路径部署（如 GitHub Pages）
+export const APP_ROOT = new URL(import.meta.env.BASE_URL, window.location.href).href;
+const TERRAIN_TILES = `${APP_ROOT}dem/{z}/{x}/{y}.png`;
 const DEM_BOUNDS = [14.0, 40.6, 14.7, 41.05];
+const data = (name) => `${APP_ROOT}data/${name}`;
 
 const GREEN_CLASSES = [
   'park', 'garden', 'grass', 'forest', 'wood', 'meadow', 'cemetery',
@@ -47,10 +50,10 @@ export function buildStyle() {
         maxzoom: 14,
         bounds: DEM_BOUNDS,
       },
-      water: { type: 'geojson', data: '/data/water.geojson' },
-      landuse: { type: 'geojson', data: '/data/landuse.geojson' },
-      roads: { type: 'geojson', data: '/data/roads.geojson' },
-      buildings: { type: 'geojson', data: '/data/buildings.geojson' },
+      water: { type: 'geojson', data: data('water.geojson') },
+      landuse: { type: 'geojson', data: data('landuse.geojson') },
+      roads: { type: 'geojson', data: data('roads.geojson') },
+      buildings: { type: 'geojson', data: data('buildings.geojson') },
     },
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#e9e0cf' } },

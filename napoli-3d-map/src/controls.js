@@ -15,7 +15,8 @@ class CollisionIndex {
 
   static async load() {
     const idx = new CollisionIndex();
-    const fc = await fetch('/data/buildings.geojson').then((r) => r.json());
+    const { APP_ROOT } = await import('./basemap.js');
+    const fc = await fetch(`${APP_ROOT}data/buildings.geojson`).then((r) => r.json());
     for (const f of fc.features) {
       const polys =
         f.geometry.type === 'Polygon' ? [f.geometry.coordinates]
