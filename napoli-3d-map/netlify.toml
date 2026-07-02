@@ -1,0 +1,23 @@
+# Netlify 部署配置
+# 方式一（CLI，需 NETLIFY_AUTH_TOKEN）：
+#   cd napoli-3d-map && npx netlify-cli deploy --prod --dir=dist
+# 方式二（Git 连接）：在 Netlify 后台连接本仓库，base 目录设为 napoli-3d-map/
+
+[build]
+  base = "napoli-3d-map/"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# GeoJSON / DEM 瓦片长缓存（内容随发布不变）
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/dem/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
