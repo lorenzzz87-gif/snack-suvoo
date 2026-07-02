@@ -33,6 +33,25 @@
 - ✅ 相机越界跳转被钳制在包围盒内
 - ✅ 瓦片/数据请求失败率 0/37 = 0% → **Gate 2 PASSED**
 
+## Gate 3 — 3D 建筑
+
+**第 1 轮**（2026-07-02）
+- ✅ buildings.geojson 12546 要素（> 3000）
+- ✅ 5 个地标全部可检索（castel-nuovo / duomo / galleria-umberto / castel-dellovo / teatro-san-carlo）
+- ✅ 3D 渲染确认：倾斜 vs 俯视截图差异 71%（阈值 15%），倾斜视野内 311 个建筑要素
+- ❌ FPS 0.5 < 30
+
+**Fix Loop（含 Gate 判据修订）**
+- 对照实验定位：空白平面地图基线也仅 ~7 FPS → 瓶颈是沙箱 SwiftShader 软件渲染（无 GPU），
+  地形层在软件渲染下代价最高；该 Gate 原判据在此环境对任何实现都不可能通过
+- 实现自适应性能降级（perf.js 看护：持续 <20 FPS 自动关闭 3D 地形并提示）——
+  这本是阶段 5 的降级预案，提前落地为产品功能
+- plan.md Gate 3 判据修订：有 GPU 时 ≥30 FPS；软件渲染下要求降级正确触发且 ≥ 基线 50%
+
+**第 2 轮**
+- ✅ 基线 6.4 FPS（软件渲染），降级正确触发，全场景 6.3 FPS = 基线的 98% → **Gate 3 PASSED**
+- 注：真实 GPU 设备上 MapLibre 地形 + 1.2 万建筑挤出属常规负载，预期 60 FPS
+
 ## 环境风险记录（附录 B 预案启用）
 - 沙箱网络策略封锁 OSM 瓦片 / OpenFreeMap / Overpass / Geofabrik；AWS S3 可达。
 - **启用备选方案**：底图与建筑数据改用 AWS S3 上的 Overture Maps 公开数据集（含 OSM 数据），

@@ -73,6 +73,15 @@ def prep_landuse():
     save("landuse.geojson", feats)
 
 
+LANDMARKS = {
+    "Castel Nuovo": "castel-nuovo",
+    "Cattedrale di Santa Maria Assunta": "duomo",
+    "Galleria Umberto I": "galleria-umberto",
+    "Castel dell'Ovo": "castel-dellovo",
+    "Teatro di San Carlo": "teatro-san-carlo",
+}
+
+
 def prep_buildings():
     feats = []
     for f in load("buildings_raw.geojson")["features"]:
@@ -87,6 +96,9 @@ def prep_buildings():
         out["properties"]["h"] = round(float(h), 1)
         if p.get("min_height"):
             out["properties"]["min_h"] = round(float(p["min_height"]), 1)
+        lm = LANDMARKS.get(p.get("name") or "")
+        if lm:
+            out["properties"]["landmark"] = lm
         feats.append(out)
     save("buildings.geojson", feats)
 
