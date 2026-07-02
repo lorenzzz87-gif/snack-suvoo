@@ -9,6 +9,19 @@ export function startPerfWatchdog(map) {
   let lowWindows = 0;
   let degraded = false;
 
+  // 渲染循环心跳恢复：动画进行中却无渲染帧 → 渲染循环挂起，强制重启
+  let renders = 0;
+  map.on('render', () => renders++);
+  setInterval(() => {
+    if (map.isMoving() && renders === 0) {
+      try {
+        map._frameRequest = null;
+        map.triggerRepaint();
+      } catch { /* 恢复失败不影响主流程 */ }
+    }
+    renders = 0;
+  }, 2000);
+
   const tick = () => {
     frames++;
     const now = performance.now();
@@ -21,7 +34,9 @@ export function startPerfWatchdog(map) {
         lowWindows++;
         if (lowWindows >= 2) {
           degraded = true;
+          map.stop(); // 先干净地结束进行中的相机动画，避免地形移除瞬间的状态竞态
           map.setTerrain(null);
+          map.triggerRepaint();
           window.__degraded = true;
           notify('已切换到轻量模式（关闭 3D 地形）以保证流畅');
         }

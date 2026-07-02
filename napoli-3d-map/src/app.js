@@ -1,6 +1,13 @@
 import { startPerfWatchdog } from './perf.js';
+import { setupControls } from './controls.js';
+import { setupHud } from './hud.js';
+import { LANDMARKS } from './config.js';
 
-// 地图加载完成后的应用初始化：HUD、控制模式、POI（后续阶段填充）
+window.__cfg = { LANDMARKS };
+
+// 地图加载完成后的应用初始化：性能看护、控制模式、HUD
 export async function initApp(map) {
   startPerfWatchdog(map);
+  const controls = await setupControls(map);
+  setupHud(map, controls);
 }

@@ -52,6 +52,28 @@
 - ✅ 基线 6.4 FPS（软件渲染），降级正确触发，全场景 6.3 FPS = 基线的 98% → **Gate 3 PASSED**
 - 注：真实 GPU 设备上 MapLibre 地形 + 1.2 万建筑挤出属常规负载，预期 60 FPS
 
+## Gate 4 — 自由探索控制
+
+**第 1 轮**（2026-07-02）
+- ❌ 漫游相机 API：`getFreeCameraOptions` 是 Mapbox 专有，MapLibre 无此 API
+- **Fix Loop 1**：升级 maplibre-gl v4→v5，改用 `calculateCameraOptionsFromTo`
+- ❌ 仍失败 → 发现 Vite 依赖缓存仍在提供 v4.7.1，清 `node_modules/.vite` 重启
+- ❌ 视高 11.7m ≠ 1.7m：maxZoom 19.5 钳制漫游相机所需 z≈20.6 → 提高到 22.5；
+  海湾 DEM 为负值（水深）→ 行走高程钳到 ≥0
+- ❌ 书签 flyTo 卡死：性能降级 setTerrain(null) 与相机动画竞态 → 渲染循环挂起
+  （_frameRequest 悬挂后 triggerRepaint 永久跳过）
+- **Fix Loop 2**：降级前先 map.stop()；perf.js 加渲染循环心跳恢复；
+  flyTo→easeTo+freezeElevation（地形+高倾角下 flyTo 不收敛）
+- ❌ 视高 4.92m：jumpTo 忽略 elevation 选项，中心点高程被地形系统覆盖
+- **Fix Loop 3**：视线落点改取地形表面交点（迭代逼近），与 MapLibre 行为一致
+
+**第 4 轮**
+- ✅ 轨道：滚轮缩放、右键拖拽旋转均生效（对降级瞬间竞态加了手势重试）
+- ✅ 漫游：W 前进有位移；视点高度独立三角学测算 = 1.70m（误差 0）
+- ✅ 碰撞：朝新堡奔跑 300m 等效步进，最终位置不在任何建筑外环内且确实前进 >10m
+- ✅ 书签：5 个地标 easeTo 后偏差全部 0m
+- ✅ 移动端 375×667：HUD 完整可见，双指缩放手势启用 → **Gate 4 PASSED**
+
 ## 环境风险记录（附录 B 预案启用）
 - 沙箱网络策略封锁 OSM 瓦片 / OpenFreeMap / Overpass / Geofabrik；AWS S3 可达。
 - **启用备选方案**：底图与建筑数据改用 AWS S3 上的 Overture Maps 公开数据集（含 OSM 数据），

@@ -33,7 +33,8 @@ async function boot() {
     bearing: INITIAL_VIEW.bearing,
     maxBounds: MAX_BOUNDS,
     minZoom: 12,
-    maxZoom: 19.5,
+    maxZoom: 22.5, // 漫游模式相机距离目标仅 40m，需要高 zoom 上限
+
     maxPitch: 85,
     attributionControl: { compact: true },
     hash: false,
