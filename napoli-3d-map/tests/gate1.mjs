@@ -1,9 +1,8 @@
 // Gate 1：页面加载无未捕获错误，标题含 Napoli 3D
-import { chromium } from 'playwright-core';
+import { launchBrowser } from './launch.mjs';
 
 const url = process.argv[2] || 'http://localhost:5173';
-export const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await launchBrowser();
 const page = await browser.newPage();
 
 const errors = [];
