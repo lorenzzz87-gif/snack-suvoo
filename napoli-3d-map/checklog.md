@@ -101,6 +101,11 @@
 
 **说明**：原始数据文件（*_raw.geojson）已从 git 移除并 ignore，可按 README 脚本重取。
 
+**补充回环**（2026-07-02，Gate 6 后自查发现）
+- ❌ 发现 maplibre v5 曾误装到仓库根目录，项目实际运行 v4.7.1（此前各 Gate 均在 v4.7.1 验证）
+- **Fix Loop**：清理根目录误装；项目 package.json 正式升级 ^5.24.0；清 Vite 缓存后
+  **在真实 v5 上重跑 Gate 1–5 全部通过**，dist 冒烟（Gate 1+2）通过 → 最终交付版本为 v5.24.0
+
 ## 环境风险记录（附录 B 预案启用）
 - 沙箱网络策略封锁 OSM 瓦片 / OpenFreeMap / Overpass / Geofabrik；AWS S3 可达。
 - **启用备选方案**：底图与建筑数据改用 AWS S3 上的 Overture Maps 公开数据集（含 OSM 数据），
