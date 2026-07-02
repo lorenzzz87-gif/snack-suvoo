@@ -87,6 +87,20 @@
 **第 2 轮**
 - ✅ 全部 5 项通过（体积/POI 开/POI 关/日落切换/断网重试 UI）→ **Gate 5 PASSED**
 
+## Gate 6 — 终检与发布（最终门）
+
+**全量回归**（2026-07-02）
+- ✅ Gate 1 复测（dev）：无控制台错误，标题正确
+- ✅ Gate 2 复测（dev）：渲染/视野/包围盒/0 失败率
+- ✅ Gate 3 复测：12546 建筑、5 地标、3D 立面、性能判据
+- ✅ Gate 4 复测：手势/漫游/视高 1.70m/碰撞/书签 0m/移动端
+- ✅ Gate 5 复测：体积 221KB/POI 开合/日落/断网重试
+- ✅ README 含 Overture/OSM（ODbL）与 Mapzen/AWS 地形署名
+- ✅ dist 静态伺服（vite preview :4173）下 Gate 1 + Gate 2 通过，无 dev server 依赖
+- ✅ 工作区干净、提交已推送 → **Gate 6 PASSED，项目交付**
+
+**说明**：原始数据文件（*_raw.geojson）已从 git 移除并 ignore，可按 README 脚本重取。
+
 ## 环境风险记录（附录 B 预案启用）
 - 沙箱网络策略封锁 OSM 瓦片 / OpenFreeMap / Overpass / Geofabrik；AWS S3 可达。
 - **启用备选方案**：底图与建筑数据改用 AWS S3 上的 Overture Maps 公开数据集（含 OSM 数据），
