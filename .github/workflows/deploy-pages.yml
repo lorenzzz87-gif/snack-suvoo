@@ -1,0 +1,56 @@
+name: Deploy Napoli 3D to GitHub Pages
+
+on:
+  push:
+    branches:
+      - claude/naples-3d-map-plan-g12aue
+      - main
+    paths:
+      - 'napoli-3d-map/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: napoli-3d-map/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: napoli-3d-map
+      - name: Build
+        run: npm run build
+        working-directory: napoli-3d-map
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: napoli-3d-map/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%8C%8B%3C/text%3E%3C/svg%3E" />
+    <title>Napoli 3D — 那不勒斯中心城区自由探索</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="map"></div>
+      <div id="loading" class="loading-overlay">
+        <div class="loading-box">
+          <h1>Napoli 3D</h1>
+          <p class="loading-sub">Centro Storico di Napoli · 那不勒斯老城</p>
+          <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+          <p id="loading-status">正在初始化…</p>
+          <button id="retry-btn" class="retry-btn" hidden>加载失败，点击重试</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

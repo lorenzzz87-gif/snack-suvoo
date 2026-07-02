@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# 原始数据可用 scripts/fetch_overture.py 重新拉取（见 README）
+public/data/*_raw.geojson
