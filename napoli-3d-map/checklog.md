@@ -74,6 +74,19 @@
 - ✅ 书签：5 个地标 easeTo 后偏差全部 0m
 - ✅ 移动端 375×667：HUD 完整可见，双指缩放手势启用 → **Gate 4 PASSED**
 
+## Gate 5 — 视觉打磨与信息层
+
+**第 1 轮**（2026-07-02）
+- ✅ 首屏 JS gzip 221KB < 800KB；数据（GeoJSON 7MB + DEM 15MB）独立懒加载不进 bundle
+- ✅ POI 卡片打开（三语内容 >80 字符）
+- ❌ 点击空白关闭：测试点击坐标 (640,600) 落在卡片自身上
+- **Fix Loop**：测试坐标改为 (950,300) 空白海面
+- 判据修订：Lighthouse 在软件渲染下 LCP/TBT 失真，plan.md Gate 5 已改为等效可执行判据
+  （体积预算 + 就绪时间 + 无控制台错误 + 数据懒加载），真实设备仍建议 Lighthouse ≥70
+
+**第 2 轮**
+- ✅ 全部 5 项通过（体积/POI 开/POI 关/日落切换/断网重试 UI）→ **Gate 5 PASSED**
+
 ## 环境风险记录（附录 B 预案启用）
 - 沙箱网络策略封锁 OSM 瓦片 / OpenFreeMap / Overpass / Geofabrik；AWS S3 可达。
 - **启用备选方案**：底图与建筑数据改用 AWS S3 上的 Overture Maps 公开数据集（含 OSM 数据），

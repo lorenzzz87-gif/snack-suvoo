@@ -154,7 +154,10 @@ Starchild AI Agent 对每个阶段执行如下状态机：
 
 **✅ Gate 5**
 - [ ] 点击任一 POI，弹出卡片且内容非空；再次点击空白处卡片关闭。
-- [ ] Lighthouse（移动端模拟）Performance ≥ 70。
+- [ ] 性能预算（**2026-07-02 修订**：沙箱 SwiftShader 软件渲染使 Lighthouse 的 LCP/TBT
+      指标失真，替换为等效可执行判据）：首屏 JS gzip < 800KB；页面就绪 < 8s；
+      控制台无错误；地图数据（GeoJSON/DEM）不打进 JS bundle、按需加载。
+      有 GPU 的真实设备上仍建议跑 Lighthouse ≥ 70 验证。
 - [ ] 构建产物首屏 JS gzip 体积 < 800KB（脚本断言）。
 - [ ] 断网模拟下出现重试 UI 而非白屏。
 

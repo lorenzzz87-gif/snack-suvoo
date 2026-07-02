@@ -18,8 +18,18 @@ export function setupHud(map, controls) {
       <div class="hints" id="hints">${HINTS.orbit}</div>
     </div>
     <div class="hud hud-bookmarks" id="bookmarks"></div>
+    <div class="hud hud-top-right-extra" style="position:fixed;top:12px;right:56px;z-index:20">
+      <button id="sun-toggle" class="sun-btn" aria-label="切换日照">🌅 日落</button>
+    </div>
   `;
   document.body.appendChild(root);
+
+  const sunBtn = root.querySelector('#sun-toggle');
+  sunBtn.addEventListener('click', async () => {
+    const { toggleDaylight } = await import('./daylight.js');
+    const mode = toggleDaylight(map);
+    sunBtn.textContent = mode === 'day' ? '🌅 日落' : '☀️ 白天';
+  });
 
   const orbitBtn = root.querySelector('#mode-orbit');
   const walkBtn = root.querySelector('#mode-walk');
